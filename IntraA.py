@@ -9,6 +9,8 @@ poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
 # Convertir pdf a imagen
 paginas = convert_from_path('C:\\Users\\practicante.rrhh\\Desktop\\cuestio_extralab\\1193522709.pdf', first_page=0, last_page=10, poppler_path=poppler_path)
 
+
+
 # Inicialización de las variables de desplazamiento
 desplazamiento_x, desplazamiento_y = 0, 0
 
@@ -223,6 +225,8 @@ coordenadas_paginas = [
 
 # Lista para almacenar las imágenes con respuestas dibujadas
 imagenes_con_respuestas = []
+# Lista para almacenar las respuestas de todas las páginas
+respuestas_totales = []
 
 # Procesamiento de cada página para agregar respuestas y almacenar la imagen
 for pagina_idx, imagen in enumerate(paginas):
@@ -246,6 +250,9 @@ for pagina_idx, imagen in enumerate(paginas):
             # Páginas regulares (1-8), usar las coordenadas ya definidas
             coordenadas_actual = coordenadas_paginas[pagina_idx]
 
+        # Lista para almacenar respuestas de esta página
+        respuestas_pagina = []
+
         # Procesar cada pregunta y determinar la respuesta
         for pregunta, opciones in coordenadas_actual.items():
             resultados = {}
@@ -255,38 +262,55 @@ for pagina_idx, imagen in enumerate(paginas):
             for opcion, ((x1, y1), (x2, y2)) in opciones.items():
                 pixeles_negros = contar_pixeles_negros(imagen_cv, x1, y1, x2, y2)
                 resultados[opcion] = pixeles_negros
-
+                
+                 
+        
                 # Consideramos que una casilla está llena si tiene más de cierto umbral de píxeles negros
-                if pixeles_negros > 50 :
-                    casillas_llenas += 1 
-                elif pixeles_negros < 9:
-                    casillas_vacias += 5
+                if pixeles_negros > 200:
+                    casillas_llenas += 1
+                # Consideramos que una casilla está vacía si tiene menos de un umbral de píxeles negros
+                elif pixeles_negros < 50:
+                    casillas_vacias += 1
 
-            if casillas_vacias >= 5:
-                respuesta = "ANULADAA"        
-
-            # Determinar si la respuesta es "ANULADA" o la opción con más píxeles negros
-            if casillas_llenas > 2:
+            # Determinar si la respuesta es "ANULADA" por casillas vacías o llenas
+            if casillas_vacias == len(opciones):
                 respuesta = "ANULADA"
+                # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
+                for _, ((x1, y1), (x2, y2)) in opciones.items():
+                    cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
+                cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+            elif casillas_llenas > 2:
+                respuesta = "ANULADA"
+                # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
+                for _, ((x1, y1), (x2, y2)) in opciones.items():
+                    cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
+                cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
             else:
+                # Respuesta seleccionada: la opción con más píxeles negros
                 respuesta = max(resultados, key=resultados.get)
+                # Dibuja un rectángulo verde solo en la casilla seleccionada
+                x1, y1, x2, y2 = opciones[respuesta][0][0], opciones[respuesta][0][1], opciones[respuesta][1][0], opciones[respuesta][1][1]
+                cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-            print(f"Página {pagina_idx + 1} - Pregunta {pregunta}: Respuesta seleccionada: '{respuesta}'")
+            # Añadir la respuesta de la pregunta a la lista de respuestas de la página
+            respuestas_pagina.append(f"Pregunta {pregunta}: {respuesta}")
 
-            # Dibuja la selección en la imagen solo si no está "ANULADA"
-            if respuesta != "ANULADA":
-                for opcion, ((x1, y1), (x2, y2)) in opciones.items():
-                    if opcion == respuesta:
-                        cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                        cv2.putText(imagen_cv, opcion, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        # Añadir las respuestas de esta página a la lista general de respuestas
+        respuestas_totales.append(f"Página {pagina_idx + 1}:\n" + "\n".join(respuestas_pagina))
 
     # Agregar la imagen procesada a la lista
     imagenes_con_respuestas.append(imagen_cv)
 
-# Visualización con desplazamiento y navegación de páginas
+# Imprimir todas las respuestas de todas las páginas
+print("\n".join(respuestas_totales))
+
+# Visualización con desplazamiento y navegación de páginas (sin cambios)
 indice_pagina = 0  # Página inicial
 desplazamiento_x, desplazamiento_y = 0, 0
-alto_ventana, ancho_ventana = 600, 800  # Tamaño de la ventana de visualización
+alto_ventana, ancho_ventana = 500, 1300  # Tamaño de la ventana de visualización
 
 while True:
     # Obtiene el tamaño de la imagen actual
@@ -320,5 +344,5 @@ while True:
     elif tecla == 27:  # Tecla 'Esc' para salir
         break
 
-# Cierra la ventana cuando termines
+# Cierra la ventana cuando termina
 cv2.destroyAllWindows()

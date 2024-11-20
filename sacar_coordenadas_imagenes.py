@@ -80,7 +80,7 @@ ruta_imagen = 'C:\\Users\\practicante.rrhh\\Desktop\\cuestio_extralab\\119352270
 
 # Convertir la segunda página del PDF a imagen
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
-paginas = convert_from_path(ruta_imagen, first_page=2, last_page=2, poppler_path=poppler_path)
+paginas = convert_from_path(ruta_imagen, first_page=9, last_page=9, poppler_path=poppler_path)
 
 
 
