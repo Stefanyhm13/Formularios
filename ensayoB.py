@@ -15,6 +15,7 @@ ruta_pdf_referencia = os.path.join(directorio_base, 'ref.pdf')
 # Crear la carpeta de plantillas si no existe
 if not os.path.exists(directorio_plantillas):
     os.makedirs(directorio_plantillas)
+    
 
 # Generar plantillas desde el PDF de referencia
 print("Generando plantillas desde el PDF de referencia...")
@@ -90,49 +91,84 @@ paginas = [cv2.cvtColor(img, cv2.COLOR_BGR2RGB) for img in imagenes_alineadas]
 # Inicialización de las variables de desplazamiento
 desplazamiento_x, desplazamiento_y = 0, 0
 
-# Función para contar píxeles negros en un área cuadrada especificada por las coordenadas
-def contar_pixeles_negros(imagen, x1, y1, x2, y2):
-    region = imagen[y1:y2, x1:x2]
-    gris = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-    _, binarizada = cv2.threshold(gris, 127, 255, cv2.THRESH_BINARY)
-    pixeles_negros = np.sum(binarizada == 0)
-    return pixeles_negros
 
-# Función para verificar si la respuesta de la pregunta filtro es "SI" o "NO"
+def detectar_x_con_lineas(region):
+    """
+    Detecta si hay una "X" en una región específica usando detección de líneas diagonales.
+    Retorna True si encuentra una "X", False en caso contrario.
+    """
+    # Convertir a escala de grises
+    gris = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+
+    # Aplicar un desenfoque para reducir ruido
+    desenfoque = cv2.GaussianBlur(gris, (5, 5), 0)
+
+    # Detectar bordes con Canny
+    bordes = cv2.Canny(desenfoque, 20, 150)
+
+    # Detectar líneas con Transformada de Hough
+    lineas = cv2.HoughLinesP(bordes, 1, np.pi / 180, threshold=30, minLineLength=10, maxLineGap=5)
+
+    if lineas is None:
+        return False  # No hay líneas detectadas
+
+    # Analizar líneas para identificar diagonales
+    diagonales = []
+    for linea in lineas:
+        x1, y1, x2, y2 = linea[0]
+        # Calcular la pendiente de la línea para identificar si es diagonal
+        pendiente = abs((y2 - y1) / (x2 - x1)) if x2 != x1 else float('inf')
+        if pendiente > 0.5:  # Las líneas diagonales tienen una pendiente significativa
+            diagonales.append((x1, y1, x2, y2))
+
+    # Una "X" debe tener al menos dos diagonales
+    return len(diagonales) >= 2
+
+    
+
 def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
     """
     Verifica si la respuesta de la pregunta filtro es "SI" o "NO".
     Dibuja un rectángulo alrededor de la respuesta seleccionada y la marca con texto.
     Retorna True si la respuesta es "SI", False si es "NO".
     """
-    # Contar píxeles negros para cada casilla (SI y NO)
-    pixeles_si = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["SI"][0], *coordenadas_filtro["SI"][1])
-    pixeles_no = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["NO"][0], *coordenadas_filtro["NO"][1])
+    # Recortar las regiones de interés para "SI" y "NO"
+    region_si = imagen_cv[coordenadas_filtro["SI"][0][1]:coordenadas_filtro["SI"][1][1],
+                          coordenadas_filtro["SI"][0][0]:coordenadas_filtro["SI"][1][0]]
+    region_no = imagen_cv[coordenadas_filtro["NO"][0][1]:coordenadas_filtro["NO"][1][1],
+                          coordenadas_filtro["NO"][0][0]:coordenadas_filtro["NO"][1][0]]
 
-    print(f"Filtro - Página {pagina_idx + 1}: SI: {pixeles_si} píxeles, NO: {pixeles_no} píxeles")
+    # Detectar "X" en las casillas de "SI" y "NO"
+    si_detectado = detectar_x_con_lineas(region_si)
+    no_detectado = detectar_x_con_lineas(region_no)
 
-    # Determinar la respuesta según el conteo de píxeles
-    respuesta_filtro = "SI" if pixeles_si > pixeles_no else "NO"
+    # Imprimir los resultados de detección
+    print(f"Filtro - Página {pagina_idx + 1}: SI detectado: {si_detectado}, NO detectado: {no_detectado}")
 
-    # Configurar el color según la respuesta
-    if respuesta_filtro == "SI":
+    # Determinar la respuesta según la detección de "X"
+    if si_detectado and not no_detectado:
+        respuesta_filtro = "SI"
         color = (0, 255, 0)  # Verde para "SI"
         x1, y1, x2, y2 = coordenadas_filtro["SI"][0][0], coordenadas_filtro["SI"][0][1], coordenadas_filtro["SI"][1][0], coordenadas_filtro["SI"][1][1]
-    else:
+    elif no_detectado and not si_detectado:
+        respuesta_filtro = "NO"
         color = (0, 0, 255)  # Rojo para "NO"
         x1, y1, x2, y2 = coordenadas_filtro["NO"][0][0], coordenadas_filtro["NO"][0][1], coordenadas_filtro["NO"][1][0], coordenadas_filtro["NO"][1][1]
-
-        # Si la respuesta es "NO", imprimir un mensaje específico y no procesar más preguntas
-        print(f"Página {pagina_idx + 1} - Respuesta filtro: NO")
+    else:
+        # Caso de detección ambigua
+        print(f"Página {pagina_idx + 1}: Detección ambigua.")
         return False
 
-    # Dibuja el rectángulo alrededor de la respuesta seleccionada
+    # Dibujar el rectángulo alrededor de la respuesta seleccionada
     cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), color, 3)
     cv2.putText(imagen_cv, respuesta_filtro, (x1 + 5, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-    # Retorna True si la respuesta es "SI", False si es "NO"
-    return True
+    # Si la respuesta es "NO", detener el procesamiento
+    if respuesta_filtro == "NO":
+        print(f"Página {pagina_idx + 1} - Respuesta filtro: NO")
+        return False
 
+    return True
 
 
 
@@ -374,60 +410,65 @@ for pagina_idx, imagen in enumerate(paginas):
         continue
 
     # Procesar cada pregunta y determinar la respuesta
-    for pregunta, opciones in coordenadas_actual.items():
-        resultados = {}
-        casillas_llenas = 0
-        casillas_vacias = 0
+for pregunta, opciones in coordenadas_actual.items():
+    resultados = {}
+    casillas_detectadas = 0  # Contador para casillas con detección de "X"
 
-        for opcion, ((x1, y1), (x2, y2)) in opciones.items():
-            pixeles_negros = contar_pixeles_negros(imagen_cv, x1, y1, x2, y2)
-            resultados[opcion] = pixeles_negros
+    for opcion, ((x1, y1), (x2, y2)) in opciones.items():
+        # Recortar la región de la casilla
+        region = imagen_cv[y1:y2, x1:x2]
 
-            # Consideramos que una casilla está llena si tiene más de cierto umbral de píxeles negros
-            if pixeles_negros > 100:  # Umbral ajustado
-                casillas_llenas += 1
-            # Consideramos que una casilla está vacía si tiene menos de un umbral de píxeles negros
-            elif pixeles_negros < 50:
-                casillas_vacias += 1
+        # Detectar si hay una "X" en la casilla
+        x_detectada = detectar_x_con_lineas(region)
+        resultados[opcion] = x_detectada
 
-        # Determinar si la respuesta es "ANULADA" por casillas vacías o llenas
-        if casillas_vacias == len(opciones):
-            respuesta = "ANULADA"
-            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
-            for _, ((x1, y1), (x2, y2)) in opciones.items():
-                cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        # Contar las casillas detectadas como marcadas
+        if x_detectada:
+            casillas_detectadas += 1
 
-        elif casillas_llenas > 1:
-            respuesta = "ANULADA"
-            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
-            for _, ((x1, y1), (x2, y2)) in opciones.items():
-                cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    # Determinar si la respuesta es "ANULADA" por casillas no marcadas o múltiples marcas
+    if casillas_detectadas == 0:
+        respuesta = "ANULADA"  # Ninguna casilla tiene una "X"
 
-        else:
-            # Respuesta seleccionada: la opción con más píxeles negros
-            respuesta = max(resultados, key=resultados.get)
-            # Dibuja un rectángulo verde solo en la casilla seleccionada
-            x1, y1, x2, y2 = opciones[respuesta][0][0], opciones[respuesta][0][1], opciones[respuesta][1][0], opciones[respuesta][1][1]
-            cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
-            cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        # Dibujar un rectángulo rojo alrededor de todas las opciones y marcar como anulada
+        for _, ((x1, y1), (x2, y2)) in opciones.items():
+            cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
+        cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-        # **Imprimir el resultado en consola para depuración**
-        print(f"Pregunta {pregunta}: {resultados} - Respuesta detectada: {respuesta}")
+    elif casillas_detectadas > 1:
+        respuesta = "ANULADA"  # Más de una casilla tiene una "X"
 
-        # Añadir la respuesta de la pregunta a la lista de respuestas de la página
-        respuestas_pagina.append(f"Pregunta {pregunta}: {respuesta}")
+        # Dibujar un rectángulo rojo alrededor de todas las opciones y marcar como anulada
+        for _, ((x1, y1), (x2, y2)) in opciones.items():
+            cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
+        cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-    # Añadir las respuestas de esta página a la lista general de respuestas
-    respuestas_totales.append(f"Página {pagina_idx + 1}:\n" + "\n".join(respuestas_pagina))
+    else:
+        # Respuesta seleccionada: única casilla con "X" detectada
+        for opcion, detectada in resultados.items():
+            if detectada:
+                respuesta = opcion
+                # Dibujar un rectángulo verde alrededor de la casilla seleccionada
+                x1, y1, x2, y2 = opciones[opcion][0][0], opciones[opcion][0][1], opciones[opcion][1][0], opciones[opcion][1][1]
+                cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                break
 
-    # Agregar la imagen procesada a la lista
-    imagenes_con_respuestas.append(imagen_cv)
+    # **Imprimir el resultado en consola para depuración**
+    print(f"Pregunta {pregunta}: {respuesta}")
 
+    # Añadir la respuesta de la pregunta a la lista de respuestas de la página
+    respuestas_pagina.append(f"Pregunta {pregunta}: {respuesta}")
+
+# Añadir las respuestas de esta página a la lista general de respuestas
+respuestas_totales.append(f"Página {pagina_idx + 1}:\n" + "\n".join(respuestas_pagina))
+
+# Agregar la imagen procesada a la lista
+imagenes_con_respuestas.append(imagen_cv)
 
 # Imprimir todas las respuestas de todas las páginas
 print("\n".join(respuestas_totales))
+
 
 # Visualización con desplazamiento y navegación de páginas (sin cambios)
 indice_pagina = 0  # Página inicial
