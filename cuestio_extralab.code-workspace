@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Downloads/labelImg-master"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}

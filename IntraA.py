@@ -29,7 +29,6 @@ for i, pagina in enumerate(paginas_referencia):
     # Guardar cada plantilla
     ruta_plantilla = os.path.join(directorio_plantillas, f'plantilla_pagina_{i + 1}.png')
     cv2.imwrite(ruta_plantilla, imagen_cv)
-    print(f'Plantilla {i + 1} guardada en {ruta_plantilla}')
     plantillas.append(imagen_cv)
 
 print("Todas las plantillas han sido generadas correctamente.")
@@ -67,7 +66,7 @@ def alinear_con_plantilla(imagen, plantilla):
         raise ValueError("No se encontraron suficientes coincidencias para alinear la imagen.")
 
 # Convertir el PDF del cuestionario a procesar a imágenes
-ruta_pdf_cuestionario = os.path.join(directorio_base, '1035850046.pdf')
+ruta_pdf_cuestionario = os.path.join(directorio_base, '71211482.pdf')
 paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
 print("Cuestionario convertido a imágenes. Procesando alineación...")
 
@@ -79,7 +78,7 @@ for i, pagina in enumerate(paginas_cuestionario):
         # Alinear con la plantilla correspondiente
         imagen_alineada = alinear_con_plantilla(imagen_cv, plantillas[i])
         imagenes_alineadas.append(imagen_alineada)
-        print(f'Página {i + 1} alineada correctamente.')
+
     except ValueError as e:
         print(f"Error al alinear la página {i + 1}: {e}")
 
@@ -133,9 +132,6 @@ def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
 
     # Retorna True si la respuesta es "SI", False si es "NO"
     return True
-
-
-
 
 # Coordenadas para las preguntas y respuestas desde la 1 hasta la 10
 coordenadas_pagina_1 = {
@@ -323,7 +319,9 @@ imagenes_con_respuestas = []
 respuestas_totales = []
 
 # Procesar cada página del PDF
-for pagina_idx, imagen in enumerate(paginas):
+if __name__ == "__main__":
+
+ for pagina_idx, imagen in enumerate(paginas):
     imagen_cv = cv2.cvtColor(np.array(imagen), cv2.COLOR_RGB2BGR)
     respuestas_pagina = []  # Lista para almacenar respuestas de esta página
 
@@ -347,9 +345,9 @@ for pagina_idx, imagen in enumerate(paginas):
     else:
         print(f"Página {pagina_idx + 1}: No hay coordenadas definidas.")
         continue
-
-    # Procesar cada página del PDF
+# Procesar cada página del PDF
 for pagina_idx, imagen in enumerate(paginas):
+    # Convertir la imagen a formato OpenCV
     imagen_cv = cv2.cvtColor(np.array(imagen), cv2.COLOR_RGB2BGR)
     respuestas_pagina = []  # Lista para almacenar respuestas de esta página
 
@@ -380,28 +378,29 @@ for pagina_idx, imagen in enumerate(paginas):
         casillas_llenas = 0
         casillas_vacias = 0
 
+        # Procesar cada opción dentro de la pregunta
         for opcion, ((x1, y1), (x2, y2)) in opciones.items():
             pixeles_negros = contar_pixeles_negros(imagen_cv, x1, y1, x2, y2)
             resultados[opcion] = pixeles_negros
 
-            # Consideramos que una casilla está llena si tiene más de cierto umbral de píxeles negros
-            if pixeles_negros > 300:  # Umbral ajustado
+            # Considerar una casilla llena si tiene más de cierto umbral de píxeles negros
+            if pixeles_negros > 150:  # Umbral ajustado
                 casillas_llenas += 1
-            # Consideramos que una casilla está vacía si tiene menos de un umbral de píxeles negros
+            # Considerar una casilla vacía si tiene menos de cierto umbral
             elif pixeles_negros < 50:
                 casillas_vacias += 1
 
         # Determinar si la respuesta es "ANULADA" por casillas vacías o llenas
         if casillas_vacias == len(opciones):
             respuesta = "ANULADA"
-            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
+            # Dibujar un rectángulo rojo alrededor de toda la sección de la pregunta
             for _, ((x1, y1), (x2, y2)) in opciones.items():
                 cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
             cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         elif casillas_llenas > 1:
             respuesta = "ANULADA"
-            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
+            # Dibujar un rectángulo rojo alrededor de toda la sección de la pregunta
             for _, ((x1, y1), (x2, y2)) in opciones.items():
                 cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
             cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
@@ -409,7 +408,7 @@ for pagina_idx, imagen in enumerate(paginas):
         else:
             # Respuesta seleccionada: la opción con más píxeles negros
             respuesta = max(resultados, key=resultados.get)
-            # Dibuja un rectángulo verde solo en la casilla seleccionada
+            # Dibujar un rectángulo verde alrededor de la casilla seleccionada
             x1, y1, x2, y2 = opciones[respuesta][0][0], opciones[respuesta][0][1], opciones[respuesta][1][0], opciones[respuesta][1][1]
             cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
             cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -426,9 +425,22 @@ for pagina_idx, imagen in enumerate(paginas):
     # Agregar la imagen procesada a la lista
     imagenes_con_respuestas.append(imagen_cv)
 
-
 # Imprimir todas las respuestas de todas las páginas
 print("\n".join(respuestas_totales))
+
+
+def obtener_respuestas_procesadas():
+    respuestas_procesadas = {}
+    for pagina_respuestas in respuestas_totales:
+        lineas = pagina_respuestas.split("\n")
+        for linea in lineas:
+            if "Pregunta" in linea:
+                partes = linea.split(":")
+                pregunta = int(partes[0].replace("Pregunta", "").strip())
+                respuesta = partes[1].strip()
+                respuestas_procesadas[pregunta] = respuesta
+    return respuestas_procesadas
+
 
 # Visualización con desplazamiento y navegación de páginas (sin cambios)
 indice_pagina = 0  # Página inicial
