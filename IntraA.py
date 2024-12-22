@@ -2,7 +2,6 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import os
-import matplotlib.pyplot as plt
 
 # Ruta completa de poppler
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
@@ -100,11 +99,7 @@ def contar_pixeles_negros(imagen, x1, y1, x2, y2):
 
 # Función para verificar si la respuesta de la pregunta filtro es "SI" o "NO"
 def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
-    """
-    Verifica si la respuesta de la pregunta filtro es "SI" o "NO".
-    Dibuja un rectángulo alrededor de la respuesta seleccionada y la marca con texto.
-    Retorna True si la respuesta es "SI", False si es "NO".
-    """
+    
     # Contar píxeles negros para cada casilla (SI y NO)
     pixeles_si = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["SI"][0], *coordenadas_filtro["SI"][1])
     pixeles_no = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["NO"][0], *coordenadas_filtro["NO"][1])
@@ -132,6 +127,7 @@ def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
 
     # Retorna True si la respuesta es "SI", False si es "NO"
     return True
+
 
 # Coordenadas para las preguntas y respuestas desde la 1 hasta la 10
 coordenadas_pagina_1 = {
@@ -177,7 +173,7 @@ coordenadas_pagina_3 = {
     33: {'Siempre': ((855, 1547), (981, 1624)), 'Casi siempre': ((992, 1549), (1109, 1623)), 'Algunas veces': ((1124, 1549), (1243, 1624)), 'Casi nunca': ((1257, 1550), (1360, 1620)), 'Nunca': ((1379, 1550), (1486, 1624))},
     34: {'Siempre': ((855, 1637), (979, 1714)), 'Casi siempre': ((994, 1640), (1109, 1713)), 'Algunas veces': ((1124, 1639), (1244, 1715)), 'Casi nunca': ((1259, 1641), (1360, 1712)), 'Nunca': ((1380, 1641), (1489, 1714))},
     35: {'Siempre': ((854, 1728), (975, 1802)), 'Casi siempre': ((991, 1729), (1106, 1803)), 'Algunas veces': ((1127, 1729), (1243, 1803)), 'Casi nunca': ((1255, 1732), (1364, 1805)), 'Nunca': ((1380, 1730), (1485, 1806))},
-    36: {'Siempre': ((852, 1817), (976, 1893)), 'Casi siempre': ((994, 1820), (1111, 1892)), 'Algunas veces': ((1126, 1818), (1241, 1891)), 'Casi nunca': ((1255, 1819), (1364, 1894)), 'Nunca': ((1380, 1819), (1488, 1894))},
+    36: {'Siempre': ((860, 1820), (980, 1893)), 'Casi siempre': ((994, 1820), (1111, 1892)), 'Algunas veces': ((1126, 1818), (1241, 1891)), 'Casi nunca': ((1255, 1819), (1364, 1894)), 'Nunca': ((1380, 1819), (1488, 1894))},
     37: {'Siempre': ((856, 1906), (975, 1980)), 'Casi siempre': ((992, 1907), (1109, 1979)), 'Algunas veces': ((1123, 1905), (1241, 1983)), 'Casi nunca': ((1254, 1906), (1367, 1984)), 'Nunca': ((1379, 1909), (1487, 1982))},
     38: {'Siempre': ((854, 1997), (978, 2066)), 'Casi siempre': ((993, 1996), (1110, 2069)), 'Algunas veces': ((1125, 1998), (1239, 2068)), 'Casi nunca': ((1254, 1998), (1362, 2064)), 'Nunca': ((1383, 1998), (1483, 2069))}
 }
@@ -189,7 +185,7 @@ coordenadas_pagina_4 ={
 42: {'Siempre': ((845, 885), (970, 962)), 'Casi siempre': ((983, 886), (1100, 963)), 'Algunas veces': ((1114, 885), (1231, 961)), 'Casi nunca': ((1245, 886), (1353, 960)), 'Nunca': ((1368, 885), (1481, 962))},
 43: {'Siempre': ((847, 974), (970, 1029)), 'Casi siempre': ((983,974), (1101 ,1029)), 'Algunas veces': ((1112 ,975),(1232 ,1028)), 'Casi nunca' :((1244 ,976),(1355 ,1029)), 'Nunca' :((1367 ,974),(1478 ,1029))},
 44: {'Siempre': ((847 ,1043),(972 ,1116)), 'Casi siempre' :((982 ,1044),(1099 ,1114)), 'Algunas veces' :((1112 ,1042),(1230 ,1114)), 'Casi nunca' :((1246 ,1043),(1353 ,1113)), 'Nunca' :((1369 ,1045),(1480 ,1116))},
-45: {'Siempre': ((849 ,1129),(972 ,1204)), 'Casi siempre' :((984 ,1128),(1098 ,1203)), 'Algunas veces' :((1113 ,1129),(1231 ,1204)), 'Casi nunca' :((1244 ,1129),(1353 ,1206)), 'Nunca' :((1367 ,1128),(1481 ,1208))},
+45: {'Siempre': ((849 ,1129),(972 ,1204)), 'Casi siempre' :((984 ,1128),(1098 ,1203)), 'Algunas veces' :((1113 ,1129),(1231 ,1204)), 'Casi nunca' :((1244 ,1129),(1353 ,1206)), 'Nunca' :((1365, 1122), (1476, 1197))},
 46: {'Siempre': ((848 ,1219),(970 ,1294)), 'Casi siempre' :((984 ,1219),(1101 ,1293)), 'Algunas veces' :((1112 ,1217),(1232 ,1293)), 'Casi nunca' :((1243 ,1219),(1353 ,1291)), 'Nunca' :((1369 ,1222),(1478 ,1294))},
 47: {'Siempre': ((850 ,1309),(969 ,1381)), 'Casi siempre' :((985 ,1307),(1102 ,1381)), 'Algunas veces' :((1115 ,1305),(1233 ,1381)), 'Casi nunca' :((1247 ,1308),(1356 ,1381)), 'Nunca' :((1367 ,1308),(1478 ,1379))},
 48: {'Siempre': ((866 ,1633),(977 ,1709)), 'Casi siempre' :((995 ,1633),(1103 ,1707)), 'Algunas veces' :((1119 ,1635),(1226 ,1709)), 'Casi nunca' :((1242 ,1634),(1353 ,1708)), 'Nunca' :((1368 ,1635),(1476 ,1710))},
@@ -226,8 +222,8 @@ coordenadas_pagina_6 ={
 71: {'Siempre': ((843 ,1313),(968 ,1378)), 'Casi siempre' :((980 ,1315),(1095 ,1377)), 'Algunas veces' :((1111 ,1315),(1229 ,1376)), 'Casi nunca' :((1242 ,1314),(1348 ,1378)), 'Nunca' :((1366 ,1316),(1469 ,1376))},
 72: {'Siempre': ((843 ,1391),(965 ,1468)), 'Casi siempre' :((979 ,1392),(1096 ,1465)), 'Algunas veces' :((1112 ,1393),(1229 ,1469)), 'Casi nunca' :((1243 ,1392),(1349 ,1466)), 'Nunca' :((1365 ,1393),(1475 ,1468))},
 73: {'Siempre': ((844 ,1481),(966 ,1534)), 'Casi siempre' :((979 ,1480),(1092 ,1533)), 'Algunas veces' :((1110 ,1483),(1227 ,1536)), 'Casi nunca' :((1241 ,1481),(1350 ,1535)), 'Nunca' :((1364 ,1481),(1475 ,1537))},
-74: {'Siempre': ((846 ,1550),(966 ,1625)), 'Casi siempre' :((981 ,1548),(1097 ,1626)), 'Algunas veces' :((1109 ,1550),(1229 ,1628)), 'Casi nunca' :((1241 ,1549),(1348 ,1628)), 'Nunca' :((1364 ,1550),(1477 ,1627))},
-75: {'Siempre': ((843 ,1640),(968 ,1713)), 'Casi siempre' :((982 ,1641),(1095 ,1713)), 'Algunas veces' :((1110 ,1639),(1229 ,1715)), 'Casi nunca' :((1241 ,1641),(1353 ,1715)), 'Nunca' :((1365 ,1643),(1477 ,1714))},
+74: {'Siempre': ((845, 1548), (963, 1619)), 'Casi siempre' :((982, 1548), (1095, 1621)), 'Algunas veces' : ((1112, 1547), (1224, 1622)), 'Casi nunca' :((1245, 1549), (1350, 1622)), 'Nunca' :((1370, 1546), (1475, 1623))},
+75: {'Siempre': ((840, 1642), (962, 1714)), 'Casi siempre' :((976, 1643), (1093, 1715)), 'Algunas veces' :((1107, 1644), (1224, 1715)), 'Casi nunca' :((1237, 1645), (1345, 1715)), 'Nunca' : ((1361, 1643), (1471, 1715))},
 }
 
 
@@ -319,9 +315,8 @@ imagenes_con_respuestas = []
 respuestas_totales = []
 
 # Procesar cada página del PDF
-if __name__ == "__main__":
 
- for pagina_idx, imagen in enumerate(paginas):
+for pagina_idx, imagen in enumerate(paginas):
     imagen_cv = cv2.cvtColor(np.array(imagen), cv2.COLOR_RGB2BGR)
     respuestas_pagina = []  # Lista para almacenar respuestas de esta página
 
@@ -378,29 +373,28 @@ for pagina_idx, imagen in enumerate(paginas):
         casillas_llenas = 0
         casillas_vacias = 0
 
-        # Procesar cada opción dentro de la pregunta
         for opcion, ((x1, y1), (x2, y2)) in opciones.items():
             pixeles_negros = contar_pixeles_negros(imagen_cv, x1, y1, x2, y2)
             resultados[opcion] = pixeles_negros
 
-            # Considerar una casilla llena si tiene más de cierto umbral de píxeles negros
+            # Consideramos que una casilla está llena si tiene más de cierto umbral de píxeles negros
             if pixeles_negros > 150:  # Umbral ajustado
                 casillas_llenas += 1
-            # Considerar una casilla vacía si tiene menos de cierto umbral
+            # Consideramos que una casilla está vacía si tiene menos de un umbral de píxeles negros
             elif pixeles_negros < 50:
                 casillas_vacias += 1
 
         # Determinar si la respuesta es "ANULADA" por casillas vacías o llenas
         if casillas_vacias == len(opciones):
             respuesta = "ANULADA"
-            # Dibujar un rectángulo rojo alrededor de toda la sección de la pregunta
+            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
             for _, ((x1, y1), (x2, y2)) in opciones.items():
                 cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
             cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
         elif casillas_llenas > 1:
             respuesta = "ANULADA"
-            # Dibujar un rectángulo rojo alrededor de toda la sección de la pregunta
+            # Dibuja un rectángulo rojo alrededor de toda la sección de la pregunta con el texto "ANULADA"
             for _, ((x1, y1), (x2, y2)) in opciones.items():
                 cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 0, 255), 3)
             cv2.putText(imagen_cv, "ANULADA", (x1 - 60, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
@@ -408,7 +402,7 @@ for pagina_idx, imagen in enumerate(paginas):
         else:
             # Respuesta seleccionada: la opción con más píxeles negros
             respuesta = max(resultados, key=resultados.get)
-            # Dibujar un rectángulo verde alrededor de la casilla seleccionada
+            # Dibuja un rectángulo verde solo en la casilla seleccionada
             x1, y1, x2, y2 = opciones[respuesta][0][0], opciones[respuesta][0][1], opciones[respuesta][1][0], opciones[respuesta][1][1]
             cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
             cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -425,12 +419,12 @@ for pagina_idx, imagen in enumerate(paginas):
     # Agregar la imagen procesada a la lista
     imagenes_con_respuestas.append(imagen_cv)
 
+
 # Imprimir todas las respuestas de todas las páginas
 print("\n".join(respuestas_totales))
 
-
 def obtener_respuestas_procesadas():
-    respuestas_procesadas = {}
+    respuestas_procesadas1 = {}
     for pagina_respuestas in respuestas_totales:
         lineas = pagina_respuestas.split("\n")
         for linea in lineas:
@@ -438,9 +432,8 @@ def obtener_respuestas_procesadas():
                 partes = linea.split(":")
                 pregunta = int(partes[0].replace("Pregunta", "").strip())
                 respuesta = partes[1].strip()
-                respuestas_procesadas[pregunta] = respuesta
-    return respuestas_procesadas
-
+                respuestas_procesadas1[pregunta] = respuesta
+    return respuestas_procesadas1
 
 # Visualización con desplazamiento y navegación de páginas (sin cambios)
 indice_pagina = 0  # Página inicial

@@ -16,7 +16,7 @@ def crear_diccionario_preguntas(desde, hasta):
     return diccionario
 
 # Crear el diccionario para preguntas de tal a la tal
-coordenadas_dict = crear_diccionario_preguntas(28, 31)
+coordenadas_dict = crear_diccionario_preguntas(1, 12)
 
 # Variables de desplazamiento y otros ajustes
 desplazamiento_x = 0
@@ -24,7 +24,7 @@ desplazamiento_y = 0
 scroll_step = 20  # Cuántos píxeles desplazarse con cada tecla
 
 # Variables para la pregunta y opción actual
-pregunta_actual = 28
+pregunta_actual = 1
 opcion_actual = 'Siempre'  # Inicia en la primera opción
 
 # Variables para capturar el cuadro
@@ -60,7 +60,7 @@ def siguiente_opcion():
         opcion_actual = opciones[0]
         pregunta_actual += 1
         if pregunta_actual > 31:
-            pregunta_actual = 28 # Regresar a la primera pregunta si se pasa de la última
+            pregunta_actual = 1 # Regresar a la primera pregunta si se pasa de la última
     print(f"Ahora seleccionando para la opción: {opcion_actual} de la pregunta {pregunta_actual}")
 
 # Función para desplazar la imagen usando las letras
@@ -76,11 +76,11 @@ def desplazar_imagen(tecla):
         desplazamiento_x += scroll_step
 
 # Ruta de la imagen convertida desde el PDF
-ruta_imagen = 'C:\\Users\\practicante.rrhh\\Desktop\\cuestio_extralab\\refE.pdf'
+ruta_imagen = 'C:\\Users\\practicante.rrhh\\Desktop\\cuestio_extralab\\ref.pdf'
 
 # Convertir la segunda página del PDF a imagen
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
-paginas = convert_from_path(ruta_imagen, first_page=3, last_page=3, poppler_path=poppler_path)
+paginas = convert_from_path(ruta_imagen, first_page=6, last_page=6,poppler_path=poppler_path)
 
 
 

@@ -2,7 +2,7 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import os
-import matplotlib.pyplot as plt
+
 
 # Ruta completa de poppler
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
