@@ -3,8 +3,6 @@ from calculosA import transformado_total as transformado_total_A
 from calculosB import transformado_total as transformado_total_B
 from calculosE import transformado_total as transformado_total_Extralaboral 
 
-
-
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill
 from calculosA import procesar_cuestionario as procesar_cuestionario_A
@@ -36,6 +34,29 @@ CLASIFICACION_CUESTIONARIOS = {
         (35.5, 100, "Riesgo muy alto")
     ]
 }
+
+def obtener_color_clasificacion(clasificacion):
+    """
+    Devuelve el color hexadecimal basado en el nivel de clasificación.
+    """
+    colores = {
+        # Clasificaciones generales
+        "Sin riesgo o riesgo despreciable": "FF27AE60",  # Verde intenso
+        "Riesgo bajo": "48FF68",  # Verde menos encendido
+        "Riesgo medio": "FFFF00",  # Amarillo
+        "Riesgo alto": "FF9900",  # Naranja
+        "Riesgo muy alto": "FF0000",  # Rojo
+        
+        # Clasificaciones específicas del cuestionario de estrés
+        "Muy bajo": "FF27AE60",  # Verde intenso
+        "Bajo": "48FF68",  # Verde menos encendido
+        "Medio": "FFFF00",  # Amarillo
+        "Alto": "FF9900",  # Naranja
+        "Muy alto": "FF0000",  # Rojo
+    }
+    return colores.get(clasificacion, "FFFFFF")  # Por defecto blanco si no coincide
+
+
 
 # Función para clasificar un puntaje según rangos
 def clasificar_puntaje(puntaje, clasificacion_rangos):
@@ -104,8 +125,26 @@ def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificaci
     print("Archivo Excel generado: Resultados_Cuestionarios.xlsx")
 
 
-# Función para escribir datos de un cuestionario en una hoja
-def escribir_datos_cuestionario(ws, datos, cuestionario,):
+from openpyxl.styles import Font, Alignment, PatternFill
+
+# Función para escribir un encabezado formateado en una hoja
+def escribir_encabezado(ws, columnas, fill_color="00A9DF"):
+    """Escribe un encabezado formateado en la hoja de Excel."""
+    ws.append(columnas)
+    for cell in ws[ws.max_row]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+# Función para aplicar un estilo a una fila
+def aplicar_estilo_fila(ws, color_hex, bold=False):
+    """Aplica un estilo específico a la última fila escrita."""
+    for cell in ws[ws.max_row]:
+        cell.fill = PatternFill(start_color=color_hex, end_color=color_hex, fill_type="solid")
+        if bold:
+            cell.font = Font(bold=True)
+
+def escribir_datos_cuestionario(ws, datos, cuestionario):
     encabezado_fill = PatternFill(start_color="00A9DF", end_color="00A9DF", fill_type="solid")
     dominio_fill = PatternFill(start_color="99FF99", end_color="99FF99", fill_type="solid")
     dimension_fill = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")
@@ -114,7 +153,7 @@ def escribir_datos_cuestionario(ws, datos, cuestionario,):
 
     # Escribir encabezado
     ws.append(["Cuestionario", cuestionario])
-    ws.append(["Dimensión/Dominio", "Bruto", "Transformado", "Clasificación"])
+    ws.append(["Dominio/Dimensión", "Bruto", "Transformado", "Clasificación"])
     for cell in ws[2]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = encabezado_fill
@@ -133,6 +172,10 @@ def escribir_datos_cuestionario(ws, datos, cuestionario,):
                 cell.fill = dominio_fill
                 cell.font = Font(bold=True)
 
+            # Aplicar color a la celda de clasificación
+            color = obtener_color_clasificacion(clasificacion_dominio)
+            ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+
             # Escribir las dimensiones dentro del dominio
             for dimension, bruto in dimensiones.items():
                 if dimension != "TOTAL_DOMINIO":
@@ -141,6 +184,10 @@ def escribir_datos_cuestionario(ws, datos, cuestionario,):
                     ws.append([f"  Dimensión: {dimension}", bruto, transformado, clasificacion])
                     for cell in ws[ws.max_row]:
                         cell.fill = dimension_fill
+
+                    # Aplicar color a la celda de clasificación
+                    color = obtener_color_clasificacion(clasificacion)
+                    ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
     else:
         for dimension, bruto in puntajes.items():
@@ -151,17 +198,27 @@ def escribir_datos_cuestionario(ws, datos, cuestionario,):
                 for cell in ws[ws.max_row]:
                     cell.fill = dimension_fill
 
+                # Aplicar color a la celda de clasificación
+                color = obtener_color_clasificacion(clasificacion)
+                ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+
     # Total del cuestionario
     ws.append(["TOTAL", puntaje_total, transformado_total, clasificacion_total])
     for cell in ws[ws.max_row]:
-        cell.font = Font(bold=True, color="FFFFFF")
+        cell.font = Font(bold=True, color="FF000000")
         cell.fill = encabezado_fill
+
+    # Aplicar color a la celda de clasificación total
+    color = obtener_color_clasificacion(clasificacion_total)
+    ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
     # Ajustar ancho de columnas
     ajustar_columnas(ws)
 
+
 def escribir_datos_totales(ws, puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres):
-    encabezado_fill = PatternFill(start_color="00A9DF", end_color="00A9DF", fill_type="solid")
+    """Escribe los datos totales de los cuestionarios combinados."""
+    encabezado_fill = "00A9DF"
 
     # Cálculos existentes
     puntaje_A_Extralaboral = transformado_total_A + transformado_total_Extralaboral
@@ -173,25 +230,29 @@ def escribir_datos_totales(ws, puntaje_bruto_estres, puntaje_transformado_estres
     clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
     clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
 
-    # Usar los valores de estrés que se pasan como argumentos
-    puntaje_estres = puntaje_bruto_estres
-    transformado_estres = round(puntaje_transformado_estres)
-
-    # Encabezados
-    ws.append(["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"])
-    for cell in ws[1]:
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = encabezado_fill
+    # Encabezado
+    escribir_encabezado(ws, ["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"], encabezado_fill)
 
     # Datos
-    ws.append(["A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral])
-    ws.append(["B + Extralaboral", puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral])
-    ws.append(["Estrés", puntaje_estres, transformado_estres, clasificacion_estres])
+    datos_totales = [
+        ("A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral),
+        ("B + Extralaboral", puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral),
+        ("Estrés", puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres),
+    ]
+
+    for cuestionario, bruto, transformado, clasificacion in datos_totales:
+        ws.append([cuestionario, bruto, transformado, clasificacion])
+
+        # Aplicar color a la celda de clasificación
+        color = obtener_color_clasificacion(clasificacion)
+        ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
     # Ajustar ancho de columnas
     ajustar_columnas(ws)
 
 
+
+# Ejecutar el script principal
 if __name__ == "__main__":
     tipo_empleado = input("Ingrese el tipo de empleado (Jefes / Operarios): ")
     puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres = procesar_cuestionario_estres(tipo_empleado)
@@ -200,5 +261,3 @@ if __name__ == "__main__":
         print("Error: No se pudo procesar el cuestionario de estrés.")
     else:
         generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres)
-
-
