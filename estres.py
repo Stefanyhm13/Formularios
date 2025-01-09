@@ -8,7 +8,7 @@ poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
 
 # Rutas principales
 directorio_base = r'C:\Users\practicante.rrhh\Desktop\cuestio_extralab'
-directorio_plantillas = os.path.join(directorio_base, 'plantillas')
+directorio_plantillas = os.path.join(directorio_base, 'plantillasD')
 ruta_pdf_referencia = os.path.join(directorio_base, 'refes.pdf')
 
 # Crear la carpeta de plantillas si no existe

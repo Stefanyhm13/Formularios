@@ -1,23 +1,26 @@
-# Importar transformados totales de los archivos específicos
+import sqlite3
+from datetime import datetime
+import openpyxl
+import shutil
+from pathlib import Path
+from openpyxl.styles import Font, Alignment, PatternFill
 from calculosA import transformado_total as transformado_total_A
 from calculosB import transformado_total as transformado_total_B
-from calculosE import transformado_total as transformado_total_Extralaboral 
-
-import openpyxl
-from openpyxl.styles import Font, Alignment, PatternFill
+from calculosE import transformado_total as transformado_total_Extralaboral
 from calculosA import procesar_cuestionario as procesar_cuestionario_A
 from calculosB import procesar_cuestionario_B as procesar_cuestionario_B
 from calculosE import procesar_cuestionario_extralaboral as procesar_cuestionario_Extralaboral
 from estres import procesar_cuestionario_estres
+from IntraA import ruta_pdf_cuestionario as ruta_pdf_cuestionario_A
+from formB import ruta_pdf_cuestionario as ruta_pdf_cuestionario_B
+from Extra import ruta_pdf_cuestionario as ruta_pdf_cuestionario_extralaboral
+from estres import ruta_pdf_cuestionario as ruta_pdf_cuestionario_estres
 
-
-# Factores de transformación para los cuestionarios combinados
 FACTORES_TRANSFORMACION = {
     "A + Extralaboral": 616,
     "B + Extralaboral": 512
 }
 
-# Clasificación de riesgo para los cuestionarios combinados
 CLASIFICACION_CUESTIONARIOS = {
     "A + Extralaboral": [
         (0.0, 18.8, "Sin riesgo o riesgo despreciable"),
@@ -35,30 +38,244 @@ CLASIFICACION_CUESTIONARIOS = {
     ]
 }
 
+def crear_base_datos():
+    """Crea las tablas necesarias en la base de datos SQLite."""
+    conn = sqlite3.connect('evaluacion_psicosocial.db')
+    cursor = conn.cursor()
+
+    # Tabla para información básica de la evaluación
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS evaluaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha DATETIME,
+            tipo_empleado TEXT,
+            nombre_empleado TEXT,
+            identificacion TEXT
+        )
+    ''')
+
+    # Tabla para resultados de cuestionarios
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS resultados_cuestionarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            evaluacion_id INTEGER,
+            tipo_cuestionario TEXT,  -- 'A', 'B', 'Extralaboral', 'Estres', 'A + Extralaboral', 'B + Extralaboral'
+            forma_cuestionario TEXT, -- 'A' o 'B' para los cuestionarios base
+            puntaje_bruto REAL,
+            puntaje_transformado REAL,
+            clasificacion TEXT,
+            FOREIGN KEY (evaluacion_id) REFERENCES evaluaciones(id)
+        )
+    ''')
+
+    # Tabla para detalles de dominios
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS dominios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resultado_id INTEGER,
+            dominio TEXT,
+            puntaje_bruto REAL,
+            puntaje_transformado REAL,
+            clasificacion TEXT,
+            FOREIGN KEY (resultado_id) REFERENCES resultados_cuestionarios(id)
+        )
+    ''')
+
+    # Tabla para detalles de dimensiones
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS dimensiones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dominio_id INTEGER,
+            dimension TEXT,
+            puntaje_bruto REAL,
+            puntaje_transformado REAL,
+            clasificacion TEXT,
+            FOREIGN KEY (dominio_id) REFERENCES dominios(id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos_b, datos_extralaboral, datos_estres):
+        """Guarda todos los resultados en la base de datos."""
+        conn = sqlite3.connect('evaluacion_psicosocial.db')
+        cursor = conn.cursor()
+        fecha_actual = datetime.now()
+
+        # Insertar información básica de la evaluación
+        cursor.execute('''
+            INSERT INTO evaluaciones (fecha, tipo_empleado, nombre_empleado, identificacion)
+            VALUES (?, ?, ?, ?)
+        ''', (fecha_actual, tipo_empleado, nombre_empleado, identificacion))
+        evaluacion_id = cursor.lastrowid
+
+        # Función auxiliar para insertar resultado de cuestionario
+        def insertar_resultado_cuestionario(tipo_cuestionario, forma_cuestionario, puntaje_bruto, 
+                                          puntaje_transformado, clasificacion):
+            cursor.execute('''
+                INSERT INTO resultados_cuestionarios 
+                (evaluacion_id, tipo_cuestionario, forma_cuestionario, 
+                 puntaje_bruto, puntaje_transformado, clasificacion)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (evaluacion_id, tipo_cuestionario, forma_cuestionario,
+                  puntaje_bruto, puntaje_transformado, clasificacion))
+            return cursor.lastrowid
+
+        # Función auxiliar para guardar dominios y dimensiones
+        def guardar_dominios_dimensiones(datos, resultado_id):
+            puntajes, puntaje_total, puntajes_transformados, clasificaciones, _, _ = datos
+            for dominio, dimensiones in puntajes.items():
+                if isinstance(dimensiones, dict):
+                    # Es un dominio con dimensiones
+                    cursor.execute('''
+                        INSERT INTO dominios 
+                        (resultado_id, dominio, puntaje_bruto, puntaje_transformado, clasificacion)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (resultado_id, dominio, sum(dimensiones.values()),
+                          puntajes_transformados[dominio]["TOTAL_DOMINIO"],
+                          clasificaciones[dominio]["TOTAL_DOMINIO"]))
+                    dominio_id = cursor.lastrowid
+
+                    # Guardar dimensiones
+                    for dimension, bruto in dimensiones.items():
+                        if dimension != "TOTAL_DOMINIO":
+                            cursor.execute('''
+                                INSERT INTO dimensiones 
+                                (dominio_id, dimension, puntaje_bruto, puntaje_transformado, clasificacion)
+                                VALUES (?, ?, ?, ?, ?)
+                            ''', (dominio_id, dimension, bruto,
+                                  puntajes_transformados[dominio][dimension],
+                                  clasificaciones[dominio][dimension]))
+                else:
+                    # Es una dimensión directa
+                    cursor.execute('''
+                        INSERT INTO dimensiones 
+                        (dominio_id, dimension, puntaje_bruto, puntaje_transformado, clasificacion)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (None, dominio, dimensiones,
+                          puntajes_transformados[dominio],
+                          clasificaciones[dominio]))
+
+        # Guardar resultados según el tipo de empleado
+        if tipo_empleado.lower() == 'jefes':
+            # Para jefes, guardar cuestionario A
+            resultado_id_a = insertar_resultado_cuestionario(
+                'Intralaboral', 'A',
+                datos_a[1],  # puntaje_total
+                datos_a[4],  # transformado_total
+                datos_a[5]   # clasificacion_total
+            )
+            guardar_dominios_dimensiones(datos_a, resultado_id_a)
+            
+            # Marcar cuestionario B como no aplicable
+            insertar_resultado_cuestionario(
+                'Intralaboral', 'B',
+                None,
+                None,
+                'NO APLICA'
+            )
+        else:
+            # Para otros empleados, guardar cuestionario B
+            resultado_id_b = insertar_resultado_cuestionario(
+                'Intralaboral', 'B',
+                datos_b[1],
+                datos_b[4],
+                datos_b[5]
+            )
+            guardar_dominios_dimensiones(datos_b, resultado_id_b)
+            
+            # Marcar cuestionario A como no aplicable
+            insertar_resultado_cuestionario(
+                'Intralaboral', 'A',
+                None,
+                None,
+                'NO APLICA'
+            )
+
+        # Guardar resultados extralaborales
+        resultado_id_extra = insertar_resultado_cuestionario(
+            'Extralaboral', None,
+            datos_extralaboral[1],
+            datos_extralaboral[4],
+            datos_extralaboral[5]
+        )
+        guardar_dominios_dimensiones(datos_extralaboral, resultado_id_extra)
+
+        # Guardar resultados de estrés
+        insertar_resultado_cuestionario(
+            'Estrés', None,
+            datos_estres[0],
+            datos_estres[1],
+            datos_estres[2]
+        )
+
+        # Guardar resultados combinados
+        if tipo_empleado.lower() == 'jefes':
+            # Para jefes, guardar A + Extralaboral
+            puntaje_A_Extralaboral = transformado_total_A + transformado_total_Extralaboral
+            transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
+            clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, 
+                                                             CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
+            
+            insertar_resultado_cuestionario(
+                'A + Extralaboral', 'A',
+                puntaje_A_Extralaboral,
+                transformado_A_Extralaboral,
+                clasificacion_A_Extralaboral
+            )
+            
+            # Marcar B + Extralaboral como no aplicable
+            insertar_resultado_cuestionario(
+                'B + Extralaboral', 'B',
+                None,
+                None,
+                'NO APLICA'
+            )
+        else:
+            # Para otros empleados, guardar B + Extralaboral
+            puntaje_B_Extralaboral = transformado_total_B + transformado_total_Extralaboral
+            transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
+            clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, 
+                                                             CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
+            
+            insertar_resultado_cuestionario(
+                'B + Extralaboral', 'B',
+                puntaje_B_Extralaboral,
+                transformado_B_Extralaboral,
+                clasificacion_B_Extralaboral
+            )
+            
+            # Marcar A + Extralaboral como no aplicable
+            insertar_resultado_cuestionario(
+                'A + Extralaboral', 'A',
+                None,
+                None,
+                'NO APLICA'
+            )
+
+        conn.commit()
+        conn.close()
+
+# Las funciones existentes se mantienen igual
 def obtener_color_clasificacion(clasificacion):
     """
     Devuelve el color hexadecimal basado en el nivel de clasificación.
     """
     colores = {
-        # Clasificaciones generales
-        "Sin riesgo o riesgo despreciable": "FF27AE60",  # Verde intenso
-        "Riesgo bajo": "48FF68",  # Verde menos encendido
-        "Riesgo medio": "FFFF00",  # Amarillo
-        "Riesgo alto": "FF9900",  # Naranja
-        "Riesgo muy alto": "FF0000",  # Rojo
-        
-        # Clasificaciones específicas del cuestionario de estrés
-        "Muy bajo": "FF27AE60",  # Verde intenso
-        "Bajo": "48FF68",  # Verde menos encendido
-        "Medio": "FFFF00",  # Amarillo
-        "Alto": "FF9900",  # Naranja
-        "Muy alto": "FF0000",  # Rojo
+        "Sin riesgo o riesgo despreciable": "FF27AE60",
+        "Riesgo bajo": "48FF68",
+        "Riesgo medio": "FFFF00",
+        "Riesgo alto": "FF9900",
+        "Riesgo muy alto": "FF0000",
+        "Muy bajo": "FF27AE60",
+        "Bajo": "48FF68",
+        "Medio": "FFFF00",
+        "Alto": "FF9900",
+        "Muy alto": "FF0000",
     }
-    return colores.get(clasificacion, "FFFFFF")  # Por defecto blanco si no coincide
+    return colores.get(clasificacion, "FFFFFF")
 
-
-
-# Función para clasificar un puntaje según rangos
 def clasificar_puntaje(puntaje, clasificacion_rangos):
     for rango_min, rango_max, nivel in clasificacion_rangos:
         if rango_min <= puntaje <= rango_max:
@@ -95,50 +312,86 @@ def ajustar_columnas(ws):
                 pass
         adjusted_width = max_length + 2
         ws.column_dimensions[column].width = adjusted_width
-
-# Función para generar el archivo Excel
-def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres):
+        
+def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres, identificacion, tipo_empleado):
     wb = openpyxl.Workbook()
 
-    # Hoja para Cuestionario A
-    ws_a = wb.active
-    ws_a.title = "Cuestionario A"
-    datos_a = procesar_cuestionario_A()
-    escribir_datos_cuestionario(ws_a, datos_a, "A")
+    if tipo_empleado == 'jefes':
+        ws_a = wb.active
+        ws_a.title = "Cuestionario A"
+        datos_a = procesar_cuestionario_A()
+        escribir_datos_cuestionario(ws_a, datos_a, "A")
 
-    # Hoja para Cuestionario B
-    ws_b = wb.create_sheet("Cuestionario B")
-    datos_b = procesar_cuestionario_B()
-    escribir_datos_cuestionario(ws_b, datos_b, "B")
+        ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
+        datos_extralaboral = procesar_cuestionario_Extralaboral()
+        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral")
 
-    # Hoja para Cuestionario Extralaboral
-    ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
-    datos_extralaboral = procesar_cuestionario_Extralaboral()
-    escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral")
+        pdf_rutas = [
+            ruta_pdf_cuestionario_A,
+            ruta_pdf_cuestionario_extralaboral,
+            ruta_pdf_cuestionario_estres
+        ]
 
-    # Hoja para el Total General
+    else:
+        ws_b = wb.active
+        ws_b.title = "Cuestionario B"
+        datos_b = procesar_cuestionario_B()
+        escribir_datos_cuestionario(ws_b, datos_b, "B")
+
+        ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
+        datos_extralaboral = procesar_cuestionario_Extralaboral()
+        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral")
+
+        pdf_rutas = [
+            ruta_pdf_cuestionario_B,
+            ruta_pdf_cuestionario_extralaboral,
+            ruta_pdf_cuestionario_estres
+        ]
+    
+    (puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral,
+     puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral) = calcular_puntaje_total()
+
     ws_total = wb.create_sheet("Total General")
-    escribir_datos_totales(ws_total, puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres)
+    escribir_encabezado(ws_total, ["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"], "00A9DF")
 
-    # Guardar el archivo
-    wb.save("Resultados_Cuestionarios.xlsx")
-    print("Archivo Excel generado: Resultados_Cuestionarios.xlsx")
+    if tipo_empleado == 'jefes':
+        ws_total.append(["A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral])
+        color = obtener_color_clasificacion(clasificacion_A_Extralaboral)
+        ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+    else:
+        ws_total.append(["B + Extralaboral", puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral])
+        color = obtener_color_clasificacion(clasificacion_B_Extralaboral)
+        ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
+    ws_total.append(["Estrés", puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres])
+    color = obtener_color_clasificacion(clasificacion_estres)
+    ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
-from openpyxl.styles import Font, Alignment, PatternFill
+    ajustar_columnas(ws_total)
 
-# Función para escribir un encabezado formateado en una hoja
+    documentos_path = Path.home() / "Documents"
+    carpeta_cuestionarios = documentos_path / "Cuestionarios"
+    carpeta_identificacion = carpeta_cuestionarios / identificacion
+    carpeta_identificacion.mkdir(parents=True, exist_ok=True)
+
+    archivo_total_path = carpeta_identificacion / "Resultados_Cuestionarios.xlsx"
+    wb.save(archivo_total_path)
+    print(f"Archivo Excel generado: {archivo_total_path}")
+
+    for pdf in pdf_rutas:
+        pdf_path = Path(pdf)
+        if pdf_path.exists():
+            shutil.copy(pdf_path, carpeta_identificacion)
+            print(f"Archivo PDF copiado: {pdf_path}")
+
 def escribir_encabezado(ws, columnas, fill_color="00A9DF"):
-    """Escribe un encabezado formateado en la hoja de Excel."""
     ws.append(columnas)
     for cell in ws[ws.max_row]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-# Función para aplicar un estilo a una fila
 def aplicar_estilo_fila(ws, color_hex, bold=False):
-    """Aplica un estilo específico a la última fila escrita."""
     for cell in ws[ws.max_row]:
         cell.fill = PatternFill(start_color=color_hex, end_color=color_hex, fill_type="solid")
         if bold:
@@ -151,7 +404,6 @@ def escribir_datos_cuestionario(ws, datos, cuestionario):
 
     puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total = datos
 
-    # Escribir encabezado
     ws.append(["Cuestionario", cuestionario])
     ws.append(["Dominio/Dimensión", "Bruto", "Transformado", "Clasificación"])
     for cell in ws[2]:
@@ -159,24 +411,20 @@ def escribir_datos_cuestionario(ws, datos, cuestionario):
         cell.fill = encabezado_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Si el cuestionario tiene dominios
     if isinstance(next(iter(puntajes.values())), dict):
         for dominio, dimensiones in puntajes.items():
             total_bruto_dominio = sum(dimensiones.values())
             total_transformado_dominio = puntajes_transformados[dominio]["TOTAL_DOMINIO"]
             clasificacion_dominio = clasificaciones[dominio]["TOTAL_DOMINIO"]
 
-            # Escribir los resultados del dominio
             ws.append([f"Dominio: {dominio}", total_bruto_dominio, total_transformado_dominio, clasificacion_dominio])
             for cell in ws[ws.max_row]:
                 cell.fill = dominio_fill
                 cell.font = Font(bold=True)
 
-            # Aplicar color a la celda de clasificación
             color = obtener_color_clasificacion(clasificacion_dominio)
             ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
-            # Escribir las dimensiones dentro del dominio
             for dimension, bruto in dimensiones.items():
                 if dimension != "TOTAL_DOMINIO":
                     transformado = puntajes_transformados[dominio][dimension]
@@ -185,7 +433,6 @@ def escribir_datos_cuestionario(ws, datos, cuestionario):
                     for cell in ws[ws.max_row]:
                         cell.fill = dimension_fill
 
-                    # Aplicar color a la celda de clasificación
                     color = obtener_color_clasificacion(clasificacion)
                     ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
@@ -198,66 +445,34 @@ def escribir_datos_cuestionario(ws, datos, cuestionario):
                 for cell in ws[ws.max_row]:
                     cell.fill = dimension_fill
 
-                # Aplicar color a la celda de clasificación
                 color = obtener_color_clasificacion(clasificacion)
                 ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
-    # Total del cuestionario
     ws.append(["TOTAL", puntaje_total, transformado_total, clasificacion_total])
     for cell in ws[ws.max_row]:
         cell.font = Font(bold=True, color="FF000000")
         cell.fill = encabezado_fill
 
-    # Aplicar color a la celda de clasificación total
     color = obtener_color_clasificacion(clasificacion_total)
     ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
-    # Ajustar ancho de columnas
     ajustar_columnas(ws)
 
-
-def escribir_datos_totales(ws, puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres):
-    """Escribe los datos totales de los cuestionarios combinados."""
-    encabezado_fill = "00A9DF"
-
-    # Cálculos existentes
-    puntaje_A_Extralaboral = transformado_total_A + transformado_total_Extralaboral
-    puntaje_B_Extralaboral = transformado_total_B + transformado_total_Extralaboral
-
-    transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
-    transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
-
-    clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
-    clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
-
-    # Encabezado
-    escribir_encabezado(ws, ["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"], encabezado_fill)
-
-    # Datos
-    datos_totales = [
-        ("A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral),
-        ("B + Extralaboral", puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral),
-        ("Estrés", puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres),
-    ]
-
-    for cuestionario, bruto, transformado, clasificacion in datos_totales:
-        ws.append([cuestionario, bruto, transformado, clasificacion])
-
-        # Aplicar color a la celda de clasificación
-        color = obtener_color_clasificacion(clasificacion)
-        ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
-
-    # Ajustar ancho de columnas
-    ajustar_columnas(ws)
-
-
-
-# Ejecutar el script principal
 if __name__ == "__main__":
-    tipo_empleado = input("Ingrese el tipo de empleado (Jefes / Operarios): ")
-    puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres = procesar_cuestionario_estres(tipo_empleado)
+    crear_base_datos()
+    
+    tipo_empleado = input("Ingrese el tipo de empleado (Jefes / Operarios): ").lower()
+    nombre_empleado = input("Ingrese el nombre del empleado: ")
+    identificacion = input("Ingrese la identificación del empleado: ")
+    
+    datos_a = procesar_cuestionario_A()
+    datos_b = procesar_cuestionario_B()
+    datos_extralaboral = procesar_cuestionario_Extralaboral()
+    datos_estres = procesar_cuestionario_estres(tipo_empleado)
 
-    if puntaje_bruto_estres is None:
+    if datos_estres[0] is None:
         print("Error: No se pudo procesar el cuestionario de estrés.")
     else:
-        generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres)
+        generar_excel(datos_estres[0], datos_estres[1], datos_estres[2], identificacion, tipo_empleado)
+        guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos_b, datos_extralaboral, datos_estres)
+        print("Resultados guardados en la base de datos.")

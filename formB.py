@@ -33,7 +33,6 @@ for i, pagina in enumerate(paginas_referencia):
     plantillas.append(imagen_cv)
 
 print("Todas las plantillas han sido generadas correctamente.")
-
 def alinear_con_plantilla(imagen, plantilla):
     # Convertir ambas imágenes a escala de grises
     imagen_gray = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)

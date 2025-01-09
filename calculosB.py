@@ -331,7 +331,7 @@ def procesar_cuestionario_B():
             if dimension in dimensiones_validas:
                 transformado = puntajes_transformados[dominio][dimension]
                 clasificacion = clasificaciones[dominio][dimension]
-                print(f"  {dimension}: Bruto: {puntaje_bruto}, Transformado: {transformado}, Clasificación: {clasificacion}")
+                print(f"  {dimension}: Bruto: {puntaje_bruto }, Transformado: {transformado}, Clasificación: {clasificacion}")
                 total_bruto_dominio += puntaje_bruto
             else:
                 print(f"  {dimension}: Sin puntaje válido")

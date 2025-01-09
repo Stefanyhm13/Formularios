@@ -65,7 +65,7 @@ def alinear_con_plantilla(imagen, plantilla):
         raise ValueError("No se encontraron suficientes coincidencias para alinear la imagen.")
 
 # Convertir el PDF del cuestionario a procesar a imágenes
-ruta_pdf_cuestionario = os.path.join(directorio_base, '71211482.pdf')
+ruta_pdf_cuestionario = os.path.join(directorio_base, 'ricardo.pdf')
 paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
 print("Cuestionario convertido a imágenes. Procesando alineación...")
 
