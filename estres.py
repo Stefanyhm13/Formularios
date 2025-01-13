@@ -2,6 +2,7 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import os
+from rutas import ruta_pdf_cuestionario_estres
 
 # Ruta completa de poppler
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
@@ -14,23 +15,26 @@ ruta_pdf_referencia = os.path.join(directorio_base, 'refes.pdf')
 # Crear la carpeta de plantillas si no existe
 if not os.path.exists(directorio_plantillas):
     os.makedirs(directorio_plantillas)
-    
 
-# Generar plantillas desde el PDF de referencia
-print("Generando plantillas desde el PDF de referencia...")
-paginas_referencia = convert_from_path(ruta_pdf_referencia, poppler_path=poppler_path)
+# Verificar que el archivo de referencia existe
+if not os.path.exists(ruta_pdf_referencia):
+    raise FileNotFoundError(f"El archivo de referencia {ruta_pdf_referencia} no existe.")
 
-plantillas = []
-for i, pagina in enumerate(paginas_referencia):
-    # Convertir cada página a imagen OpenCV
-    imagen_cv = cv2.cvtColor(np.array(pagina), cv2.COLOR_RGB2BGR)
+# Generar plantilla desde el PDF de referencia
+print("Generando plantilla desde el PDF de referencia...")
+try:
+    paginas_referencia = convert_from_path(ruta_pdf_referencia, poppler_path=poppler_path)
+except Exception as e:
+    print(f"Error al convertir el PDF de referencia: {e}")
+    raise
 
-    # Guardar cada plantilla
-    ruta_plantilla = os.path.join(directorio_plantillas, f'plantilla_pagina_{i + 1}.png')
-    cv2.imwrite(ruta_plantilla, imagen_cv)
-    plantillas.append(imagen_cv)
+# Suponiendo que solo hay una plantilla
+plantilla = cv2.cvtColor(np.array(paginas_referencia[0]), cv2.COLOR_RGB2BGR)
 
-print("Todas las plantillas han sido generadas correctamente.")
+# Guardar la plantilla
+ruta_plantilla = os.path.join(directorio_plantillas, 'plantilla.png')
+cv2.imwrite(ruta_plantilla, plantilla)
+print("La plantilla ha sido generada correctamente.")
 
 def alinear_con_plantilla(imagen, plantilla):
     # Convertir ambas imágenes a escala de grises
@@ -65,17 +69,22 @@ def alinear_con_plantilla(imagen, plantilla):
         raise ValueError("No se encontraron suficientes coincidencias para alinear la imagen.")
 
 # Convertir el PDF del cuestionario a procesar a imágenes
-ruta_pdf_cuestionario = os.path.join(directorio_base, '122024ES.pdf')
-paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
-print("Cuestionario convertido a imágenes. Procesando alineación...")
+ruta_pdf_cuestionario = ruta_pdf_cuestionario_estres
+print(f"Ruta del PDF del cuestionario: {ruta_pdf_cuestionario}")
+try:
+    paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
+    print("Cuestionario convertido a imágenes. Procesando alineación...")
+except Exception as e:
+    print(f"Error al convertir el PDF del cuestionario: {e}")
+    raise
 
 imagenes_alineadas = []
 for i, pagina in enumerate(paginas_cuestionario):
     imagen_cv = cv2.cvtColor(np.array(pagina), cv2.COLOR_RGB2BGR)
     
     try:
-        # Alinear con la plantilla correspondiente
-        imagen_alineada = alinear_con_plantilla(imagen_cv, plantillas[i])
+        # Alinear con la única plantilla disponible
+        imagen_alineada = alinear_con_plantilla(imagen_cv, plantilla)
         imagenes_alineadas.append(imagen_alineada)
 
     except ValueError as e:
@@ -83,8 +92,6 @@ for i, pagina in enumerate(paginas_cuestionario):
 
 # Integrar imágenes alineadas en el resto del procesamiento
 paginas = [cv2.cvtColor(img, cv2.COLOR_BGR2RGB) for img in imagenes_alineadas]
-
-
 
 # Inicialización de las variables de desplazamiento
 desplazamiento_x, desplazamiento_y = 0, 0

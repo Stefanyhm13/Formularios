@@ -2,7 +2,7 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import os
-
+from rutas import ruta_pdf_cuestionario_extralaboral
 
 # Ruta completa de poppler
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
@@ -66,7 +66,7 @@ def alinear_con_plantilla(imagen, plantilla):
         raise ValueError("No se encontraron suficientes coincidencias para alinear la imagen.")
 
 # Convertir el PDF del cuestionario a procesar a imágenes
-ruta_pdf_cuestionario = os.path.join(directorio_base, '312324E.pdf')
+ruta_pdf_cuestionario = ruta_pdf_cuestionario_extralaboral
 paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
 print("Cuestionario convertido a imágenes. Procesando alineación...")
 

@@ -2,7 +2,7 @@ from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import os
-
+from rutas import ruta_pdf_cuestionario_B
 
 # Ruta completa de poppler
 poppler_path = r'C:\Users\practicante.rrhh\Desktop\poppler-24.08.0\Library\bin'
@@ -66,7 +66,7 @@ def alinear_con_plantilla(imagen, plantilla):
         raise ValueError("No se encontraron suficientes coincidencias para alinear la imagen.")
 
 # Convertir el PDF del cuestionario a procesar a imágenes
-ruta_pdf_cuestionario = os.path.join(directorio_base, '465496B.pdf')
+ruta_pdf_cuestionario = ruta_pdf_cuestionario_B
 paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
 print("Cuestionario convertido a imágenes. Procesando alineación...")
 
@@ -160,19 +160,19 @@ coordenadas_pagina_2 = {
 }
 
 coordenadas_pagina_3 = {
-    23: {'Siempre': ((862, 567), (987, 647)), 'Casi siempre': ((996, 570), (1115, 648)), 'Algunas veces': ((1126, 571), (1245, 648)), 'Casi nunca': ((1255, 571), (1368, 648)), 'Nunca': ((1377, 571), (1490, 649))},
-    24: {'Siempre': ((860, 656), (989, 735)), 'Casi siempre': ((997, 659), (1115, 735)), 'Algunas veces': ((1125, 658), (1246, 735)), 'Casi nunca': ((1256, 658), (1368, 736)), 'Nunca': ((1376, 659), (1490, 737))},
-    25: {'Siempre': ((860, 744), (986, 824)), 'Casi siempre': ((995, 745), (1116, 821)), 'Algunas veces': ((1125, 747), (1245, 826)), 'Casi nunca': ((1257, 747), (1368, 827)), 'Nunca': ((1377, 747), (1488, 824))},
-    26: {'Siempre': ((860, 833), (985, 913)), 'Casi siempre': ((996, 836), (1118, 915)), 'Algunas veces': ((1126, 836), (1245, 915)), 'Casi nunca': ((1255, 836), (1368, 915)), 'Nunca': ((1378, 836), (1488, 915))},
-    27: {'Siempre': ((859, 922), (985, 999)), 'Casi siempre': ((995, 923), (1115, 999)), 'Algunas veces': ((1125, 925), (1244, 1001)), 'Casi nunca': ((1254, 924), (1366, 1003)), 'Nunca': ((1375, 926), (1489, 1003))},
-    28: {'Siempre': ((858, 1010), (983, 1088)), 'Casi siempre': ((994, 1011), (1114, 1087)), 'Algunas veces': ((1123, 1012), (1243, 1088)), 'Casi nunca': ((1255, 1012), (1367, 1090)), 'Nunca': ((1374, 1013), (1490, 1090))},
-    29: {'Siempre': ((859, 1330), (983, 1387)), 'Casi siempre': ((995, 1331), (1114, 1388)), 'Algunas veces': ((1123, 1330), (1244, 1390)), 'Casi nunca': ((1254, 1333), (1364, 1388)), 'Nunca': ((1375, 1332), (1486, 1390))},
-    30: {'Siempre': ((856, 1396), (986, 1479)), 'Casi siempre': ((994, 1396), (1115, 1476)), 'Algunas veces': ((1122, 1399), (1243, 1476)), 'Casi nunca': ((1252, 1397), (1364, 1479)), 'Nunca': ((1372, 1400), (1486, 1478))},
-    31: {'Siempre': ((859, 1486), (985, 1564)), 'Casi siempre': ((993, 1485), (1114, 1566)), 'Algunas veces': ((1122, 1489), (1242, 1565)), 'Casi nunca': ((1251, 1489), (1363, 1567)), 'Nunca': ((1373, 1488), (1485, 1568))},
-    32: {'Siempre': ((858, 1574), (984, 1666)), 'Casi siempre': ((993, 1576), (1112, 1670)), 'Algunas veces': ((1121, 1577), (1243, 1669)), 'Casi nunca': ((1250, 1574), (1364, 1673)), 'Nunca': ((1374, 1576), (1486, 1671))},
-    33: {'Siempre': ((857, 1676), (984, 1736)), 'Casi siempre': ((991, 1677), (1110, 1737)), 'Algunas veces': ((1121, 1679), (1243, 1738)), 'Casi nunca': ((1254, 1680), (1364, 1738)), 'Nunca': ((1373, 1680), (1483, 1738))},
-    34: {'Siempre': ((856, 1746), (981, 1837)), 'Casi siempre': ((992, 1745), (1111, 1839)), 'Algunas veces': ((1120, 1746), (1242, 1841)), 'Casi nunca': ((1251, 1748), (1365, 1840)), 'Nunca': ((1373, 1747), (1483, 1837))},
-    35: {'Siempre': ((856, 1847), (983, 1929)), 'Casi siempre': ((993, 1848), (1113, 1930)), 'Algunas veces': ((1121, 1848), (1241, 1930)), 'Casi nunca': ((1249, 1849), (1363, 1930)), 'Nunca': ((1371, 1850), (1485, 1932))}
+    23: {'Siempre': ((864, 570), (985, 646)), 'Casi siempre': ((1000, 570), (1111, 644)), 'Algunas veces': ((1128, 574), (1241, 645)), 'Casi nunca': ((1258, 572), (1361, 645)), 'Nunca': ((1380, 571), (1486, 648))},
+    24: {'Siempre': ((862, 661), (981, 731)), 'Casi siempre': ((1000, 661), (1111, 733)), 'Algunas veces': ((1127, 661), (1241, 732)), 'Casi nunca': ((1258, 660), (1364, 734)), 'Nunca': ((1380, 664), (1486, 734))},
+    25: {'Siempre': ((863, 749), (981, 820)), 'Casi siempre': ((1000, 748), (1110, 821)), 'Algunas veces': ((1128, 749), (1240, 820)), 'Casi nunca': ((1258, 748), (1363, 822)), 'Nunca': ((1381, 750), (1485, 823))},
+    26: {'Siempre': ((863, 838), (981, 908)), 'Casi siempre': ((1001, 837), (1110, 909)), 'Algunas veces': ((1126, 839), (1241, 911)), 'Casi nunca': ((1257, 840), (1363, 910)), 'Nunca': ((1379, 840), (1485, 910))},
+    27: {'Siempre': ((862, 927), (982, 997)), 'Casi siempre': ((999, 927), (1111, 996)), 'Algunas veces': ((1129, 928), (1236, 997)), 'Casi nunca': ((1256, 926), (1363, 999)), 'Nunca': ((1380, 928), (1483, 998))},
+    28: {'Siempre': ((863, 1013), (980, 1083)), 'Casi siempre': ((1001, 1016), (1108, 1083)), 'Algunas veces': ((1126, 1015), (1239, 1086)), 'Casi nunca': ((1259, 1017), (1363, 1087)), 'Nunca': ((1380, 1016), (1480, 1087))},
+    29: {'Siempre': ((862, 1334), (981, 1384)), 'Casi siempre': ((996, 1333), (1109, 1385)), 'Algunas veces': ((1126, 1335), (1240, 1386)), 'Casi nunca': ((1255, 1335), (1363, 1388)), 'Nunca': ((1380, 1337), (1481, 1385))},
+    30: {'Siempre': ((862, 1401), (980, 1471)), 'Casi siempre': ((998, 1400), (1108, 1472)), 'Algunas veces': ((1126, 1403), (1237, 1474)), 'Casi nunca': ((1256, 1400), (1359, 1472)), 'Nunca': ((1378, 1403), (1482, 1474))},
+    31: {'Siempre': ((861, 1490), (977, 1561)), 'Casi siempre': ((996, 1490), (1108, 1560)), 'Algunas veces': ((1126, 1491), (1236, 1561)), 'Casi nunca': ((1255, 1493), (1357, 1565)), 'Nunca': ((1380, 1492), (1482, 1564))},
+    32: {'Siempre': ((862, 1580), (978, 1662)), 'Casi siempre': ((997, 1581), (1105, 1662)), 'Algunas veces': ((1126, 1578), (1238, 1665)), 'Casi nunca': ((1256, 1579), (1359, 1665)), 'Nunca': ((1379, 1580), (1480, 1663))},
+    33: {'Siempre': ((863, 1683), (978, 1734)), 'Casi siempre': ((998, 1684), (1110, 1731)), 'Algunas veces': ((1125, 1684), (1240, 1733)), 'Casi nunca': ((1254, 1685), (1357, 1735)), 'Nunca': ((1377, 1682), (1478, 1731))},
+    34: {'Siempre': ((861, 1747), (978, 1833)), 'Casi siempre': ((998, 1751), (1106, 1831)), 'Algunas veces': ((1126, 1751), (1237, 1837)), 'Casi nunca': ((1254, 1752), (1359, 1834)), 'Nunca': ((1380, 1752), (1476, 1830))},
+    35: {'Siempre': ((862, 1852), (978, 1924)), 'Casi siempre': ((1000, 1852), (1108, 1926)), 'Algunas veces': ((1125, 1852), (1233, 1924)), 'Casi nunca': ((1253, 1853), (1359, 1927)), 'Nunca': ((1376, 1853), (1480, 1928))}
 }
 
 coordenadas_pagina_4 = {

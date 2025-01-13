@@ -11,10 +11,7 @@ from calculosA import procesar_cuestionario as procesar_cuestionario_A
 from calculosB import procesar_cuestionario_B as procesar_cuestionario_B
 from calculosE import procesar_cuestionario_extralaboral as procesar_cuestionario_Extralaboral
 from estres import procesar_cuestionario_estres
-from IntraA import ruta_pdf_cuestionario as ruta_pdf_cuestionario_A
-from formB import ruta_pdf_cuestionario as ruta_pdf_cuestionario_B
-from Extra import ruta_pdf_cuestionario as ruta_pdf_cuestionario_extralaboral
-from estres import ruta_pdf_cuestionario as ruta_pdf_cuestionario_estres
+from rutas import ruta_pdf_cuestionario_A, ruta_pdf_cuestionario_B, ruta_pdf_cuestionario_extralaboral, ruta_pdf_cuestionario_estres
 
 FACTORES_TRANSFORMACION = {
     "A + Extralaboral": 616,
@@ -38,10 +35,22 @@ CLASIFICACION_CUESTIONARIOS = {
     ]
 }
 
+
+
 def crear_base_datos():
     """Crea las tablas necesarias en la base de datos SQLite."""
     conn = sqlite3.connect('evaluacion_psicosocial.db')
     cursor = conn.cursor()
+
+    # Tabla para información de los usuarios
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT,
+            identificacion TEXT,
+            area TEXT
+        )
+    ''')
 
     # Tabla para información básica de la evaluación
     cursor.execute('''
@@ -49,8 +58,8 @@ def crear_base_datos():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fecha DATETIME,
             tipo_empleado TEXT,
-            nombre_empleado TEXT,
-            identificacion TEXT
+            usuario_id INTEGER,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
         )
     ''')
 
@@ -59,12 +68,14 @@ def crear_base_datos():
         CREATE TABLE IF NOT EXISTS resultados_cuestionarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             evaluacion_id INTEGER,
+            usuario_id INTEGER,
             tipo_cuestionario TEXT,  -- 'A', 'B', 'Extralaboral', 'Estres', 'A + Extralaboral', 'B + Extralaboral'
             forma_cuestionario TEXT, -- 'A' o 'B' para los cuestionarios base
             puntaje_bruto REAL,
             puntaje_transformado REAL,
             clasificacion TEXT,
-            FOREIGN KEY (evaluacion_id) REFERENCES evaluaciones(id)
+            FOREIGN KEY (evaluacion_id) REFERENCES evaluaciones (id),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
         )
     ''')
 
@@ -73,11 +84,13 @@ def crear_base_datos():
         CREATE TABLE IF NOT EXISTS dominios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             resultado_id INTEGER,
+            usuario_id INTEGER,
             dominio TEXT,
             puntaje_bruto REAL,
             puntaje_transformado REAL,
             clasificacion TEXT,
-            FOREIGN KEY (resultado_id) REFERENCES resultados_cuestionarios(id)
+            FOREIGN KEY (resultado_id) REFERENCES resultados_cuestionarios (id),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
         )
     ''')
 
@@ -85,81 +98,92 @@ def crear_base_datos():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS dimensiones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            dominio_id INTEGER,
+            resultado_id INTEGER,
+            usuario_id INTEGER,
+            dominio TEXT,
             dimension TEXT,
             puntaje_bruto REAL,
             puntaje_transformado REAL,
             clasificacion TEXT,
-            FOREIGN KEY (dominio_id) REFERENCES dominios(id)
+            FOREIGN KEY (resultado_id) REFERENCES resultados_cuestionarios (id),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
         )
     ''')
 
     conn.commit()
     conn.close()
 
-def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos_b, datos_extralaboral, datos_estres):
-        """Guarda todos los resultados en la base de datos."""
-        conn = sqlite3.connect('evaluacion_psicosocial.db')
-        cursor = conn.cursor()
-        fecha_actual = datetime.now()
+def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a, datos_b, datos_extralaboral, datos_estres):
+    """Guarda todos los resultados en la base de datos."""
+    conn = sqlite3.connect('evaluacion_psicosocial.db')
+    cursor = conn.cursor()
+    fecha_actual = datetime.now()
 
-        # Insertar información básica de la evaluación
+    # Insertar información del usuario
+    cursor.execute('''
+        INSERT INTO usuarios (nombre, identificacion, area)
+        VALUES (?, ?, ?)
+    ''', (nombre_empleado, identificacion, area))
+    usuario_id = cursor.lastrowid
+
+    # Insertar información básica de la evaluación
+    cursor.execute('''
+        INSERT INTO evaluaciones (fecha, tipo_empleado, usuario_id)
+        VALUES (?, ?, ?)
+    ''', (fecha_actual, tipo_empleado, usuario_id))
+    evaluacion_id = cursor.lastrowid
+
+    # Función auxiliar para insertar resultado de cuestionario
+    def insertar_resultado_cuestionario(tipo_cuestionario, forma_cuestionario, puntaje_bruto, 
+                                        puntaje_transformado, clasificacion):
         cursor.execute('''
-            INSERT INTO evaluaciones (fecha, tipo_empleado, nombre_empleado, identificacion)
-            VALUES (?, ?, ?, ?)
-        ''', (fecha_actual, tipo_empleado, nombre_empleado, identificacion))
-        evaluacion_id = cursor.lastrowid
+            INSERT INTO resultados_cuestionarios 
+            (evaluacion_id, usuario_id, tipo_cuestionario, forma_cuestionario, 
+             puntaje_bruto, puntaje_transformado, clasificacion)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (evaluacion_id, usuario_id, tipo_cuestionario, forma_cuestionario,
+              puntaje_bruto, puntaje_transformado, clasificacion))
+        return cursor.lastrowid
 
-        # Función auxiliar para insertar resultado de cuestionario
-        def insertar_resultado_cuestionario(tipo_cuestionario, forma_cuestionario, puntaje_bruto, 
-                                          puntaje_transformado, clasificacion):
-            cursor.execute('''
-                INSERT INTO resultados_cuestionarios 
-                (evaluacion_id, tipo_cuestionario, forma_cuestionario, 
-                 puntaje_bruto, puntaje_transformado, clasificacion)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (evaluacion_id, tipo_cuestionario, forma_cuestionario,
-                  puntaje_bruto, puntaje_transformado, clasificacion))
-            return cursor.lastrowid
+    # Función auxiliar para guardar dominios y dimensiones
+    def guardar_dominios_dimensiones(datos, resultado_id):
+        puntajes, puntaje_total, puntajes_transformados, clasificaciones, _, _ = datos
+        for dominio, dimensiones in puntajes.items():
+            if isinstance(dimensiones, dict):
+                # Es un dominio con dimensiones
+                cursor.execute('''
+                    INSERT INTO dominios 
+                    (resultado_id, usuario_id, dominio, puntaje_bruto, puntaje_transformado, clasificacion)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (resultado_id, usuario_id, dominio, sum(bruto for bruto in dimensiones.values() if bruto != "Sin puntaje válido"),
+                      puntajes_transformados[dominio]["TOTAL_DOMINIO"],
+                      clasificaciones[dominio]["TOTAL_DOMINIO"]))
+                dominio_id = cursor.lastrowid
 
-        # Función auxiliar para guardar dominios y dimensiones
-        def guardar_dominios_dimensiones(datos, resultado_id):
-            puntajes, puntaje_total, puntajes_transformados, clasificaciones, _, _ = datos
-            for dominio, dimensiones in puntajes.items():
-                if isinstance(dimensiones, dict):
-                    # Es un dominio con dimensiones
-                    cursor.execute('''
-                        INSERT INTO dominios 
-                        (resultado_id, dominio, puntaje_bruto, puntaje_transformado, clasificacion)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (resultado_id, dominio, sum(dimensiones.values()),
-                          puntajes_transformados[dominio]["TOTAL_DOMINIO"],
-                          clasificaciones[dominio]["TOTAL_DOMINIO"]))
-                    dominio_id = cursor.lastrowid
+                # Guardar dimensiones
+                for dimension, bruto in dimensiones.items():
+                    if dimension != "TOTAL_DOMINIO":
+                        cursor.execute('''
+                            INSERT INTO dimensiones 
+                            (resultado_id, usuario_id, dominio, dimension, puntaje_bruto, puntaje_transformado, clasificacion)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (resultado_id, usuario_id, dominio, dimension, bruto,
+                              puntajes_transformados[dominio][dimension],
+                              clasificaciones[dominio][dimension]))
+            else:
+                # Es un dominio sin dimensiones
+                cursor.execute('''
+                    INSERT INTO dominios 
+                    (resultado_id, usuario_id, dominio, puntaje_bruto, puntaje_transformado, clasificacion)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (resultado_id, usuario_id, dominio, dimensiones,
+                      puntajes_transformados[dominio],
+                      clasificaciones[dominio]))
 
-                    # Guardar dimensiones
-                    for dimension, bruto in dimensiones.items():
-                        if dimension != "TOTAL_DOMINIO":
-                            cursor.execute('''
-                                INSERT INTO dimensiones 
-                                (dominio_id, dimension, puntaje_bruto, puntaje_transformado, clasificacion)
-                                VALUES (?, ?, ?, ?, ?)
-                            ''', (dominio_id, dimension, bruto,
-                                  puntajes_transformados[dominio][dimension],
-                                  clasificaciones[dominio][dimension]))
-                else:
-                    # Es una dimensión directa
-                    cursor.execute('''
-                        INSERT INTO dimensiones 
-                        (dominio_id, dimension, puntaje_bruto, puntaje_transformado, clasificacion)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (None, dominio, dimensiones,
-                          puntajes_transformados[dominio],
-                          clasificaciones[dominio]))
-
-        # Guardar resultados según el tipo de empleado
-        if tipo_empleado.lower() == 'jefes':
-            # Para jefes, guardar cuestionario A
+    # Guardar resultados según el tipo de empleado
+    if tipo_empleado.lower() == 'a':
+        # Para jefes, guardar cuestionario A
+        if datos_a:
             resultado_id_a = insertar_resultado_cuestionario(
                 'Intralaboral', 'A',
                 datos_a[1],  # puntaje_total
@@ -167,16 +191,17 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos
                 datos_a[5]   # clasificacion_total
             )
             guardar_dominios_dimensiones(datos_a, resultado_id_a)
-            
-            # Marcar cuestionario B como no aplicable
-            insertar_resultado_cuestionario(
-                'Intralaboral', 'B',
-                None,
-                None,
-                'NO APLICA'
-            )
-        else:
-            # Para otros empleados, guardar cuestionario B
+        
+        # Marcar cuestionario B como no aplicable
+        insertar_resultado_cuestionario(
+            'Intralaboral', 'B',
+            None,
+            None,
+            'NO APLICA'
+        )
+    else:
+        # Para otros empleados, guardar cuestionario B
+        if datos_b:
             resultado_id_b = insertar_resultado_cuestionario(
                 'Intralaboral', 'B',
                 datos_b[1],
@@ -184,16 +209,17 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos
                 datos_b[5]
             )
             guardar_dominios_dimensiones(datos_b, resultado_id_b)
-            
-            # Marcar cuestionario A como no aplicable
-            insertar_resultado_cuestionario(
-                'Intralaboral', 'A',
-                None,
-                None,
-                'NO APLICA'
-            )
+        
+        # Marcar cuestionario A como no aplicable
+        insertar_resultado_cuestionario(
+            'Intralaboral', 'A',
+            None,
+            None,
+            'NO APLICA'
+        )
 
-        # Guardar resultados extralaborales
+    # Guardar resultados extralaborales
+    if datos_extralaboral:
         resultado_id_extra = insertar_resultado_cuestionario(
             'Extralaboral', None,
             datos_extralaboral[1],
@@ -202,7 +228,8 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos
         )
         guardar_dominios_dimensiones(datos_extralaboral, resultado_id_extra)
 
-        # Guardar resultados de estrés
+    # Guardar resultados de estrés
+    if datos_estres:
         insertar_resultado_cuestionario(
             'Estrés', None,
             datos_estres[0],
@@ -210,52 +237,52 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos
             datos_estres[2]
         )
 
-        # Guardar resultados combinados
-        if tipo_empleado.lower() == 'jefes':
-            # Para jefes, guardar A + Extralaboral
-            puntaje_A_Extralaboral = transformado_total_A + transformado_total_Extralaboral
-            transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
-            clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, 
-                                                             CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
-            
-            insertar_resultado_cuestionario(
-                'A + Extralaboral', 'A',
-                puntaje_A_Extralaboral,
-                transformado_A_Extralaboral,
-                clasificacion_A_Extralaboral
-            )
-            
-            # Marcar B + Extralaboral como no aplicable
-            insertar_resultado_cuestionario(
-                'B + Extralaboral', 'B',
-                None,
-                None,
-                'NO APLICA'
-            )
-        else:
-            # Para otros empleados, guardar B + Extralaboral
-            puntaje_B_Extralaboral = transformado_total_B + transformado_total_Extralaboral
-            transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
-            clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, 
-                                                             CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
-            
-            insertar_resultado_cuestionario(
-                'B + Extralaboral', 'B',
-                puntaje_B_Extralaboral,
-                transformado_B_Extralaboral,
-                clasificacion_B_Extralaboral
-            )
-            
-            # Marcar A + Extralaboral como no aplicable
-            insertar_resultado_cuestionario(
-                'A + Extralaboral', 'A',
-                None,
-                None,
-                'NO APLICA'
-            )
+    # Guardar resultados combinados
+    if tipo_empleado.lower() == 'a':
+        # Para jefes, guardar A + Extralaboral
+        puntaje_A_Extralaboral = datos_a[4] + datos_extralaboral[4]
+        transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
+        clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, 
+                                                         CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
+        
+        insertar_resultado_cuestionario(
+            'A + Extralaboral', 'A',
+            puntaje_A_Extralaboral,
+            transformado_A_Extralaboral,
+            clasificacion_A_Extralaboral
+        )
+        
+        # Marcar B + Extralaboral como no aplicable
+        insertar_resultado_cuestionario(
+            'B + Extralaboral', 'B',
+            None,
+            None,
+            'NO APLICA'
+        )
+    else:
+        # Para otros empleados, guardar B + Extralaboral
+        puntaje_B_Extralaboral = datos_b[4] + datos_extralaboral[4]
+        transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
+        clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, 
+                                                         CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
+        
+        insertar_resultado_cuestionario(
+            'B + Extralaboral', 'B',
+            puntaje_B_Extralaboral,
+            transformado_B_Extralaboral,
+            clasificacion_B_Extralaboral
+        )
+        
+        # Marcar A + Extralaboral como no aplicable
+        insertar_resultado_cuestionario(
+            'A + Extralaboral', 'A',
+            None,
+            None,
+            'NO APLICA'
+        )
 
-        conn.commit()
-        conn.close()
+    conn.commit()
+    conn.close()
 
 # Las funciones existentes se mantienen igual
 def obtener_color_clasificacion(clasificacion):
@@ -285,8 +312,8 @@ def clasificar_puntaje(puntaje, clasificacion_rangos):
 # Función principal para calcular y clasificar puntajes combinados
 def calcular_puntaje_total():
     # Calcular combinaciones de Forma A + Extralaboral y Forma B + Extralaboral
-    puntaje_A_Extralaboral = transformado_total_A + transformado_total_Extralaboral
-    puntaje_B_Extralaboral = transformado_total_B + transformado_total_Extralaboral
+    puntaje_A_Extralaboral = round(transformado_total_A + transformado_total_Extralaboral)
+    puntaje_B_Extralaboral = round(transformado_total_B + transformado_total_Extralaboral)
 
     # Transformar los puntajes
     transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
@@ -313,18 +340,21 @@ def ajustar_columnas(ws):
         adjusted_width = max_length + 2
         ws.column_dimensions[column].width = adjusted_width
         
-def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres, identificacion, tipo_empleado):
+def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres, identificacion, tipo_empleado, area):
     wb = openpyxl.Workbook()
 
-    if tipo_empleado == 'jefes':
+    ws_total = wb.create_sheet("Total General")
+    escribir_encabezado(ws_total, ["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"], "00A9DF")
+
+    if tipo_empleado.lower() == 'a' or 'A':
         ws_a = wb.active
         ws_a.title = "Cuestionario A"
         datos_a = procesar_cuestionario_A()
-        escribir_datos_cuestionario(ws_a, datos_a, "A")
+        escribir_datos_cuestionario(ws_a, datos_a, "A", ws_total)
 
         ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
         datos_extralaboral = procesar_cuestionario_Extralaboral()
-        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral")
+        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral", ws_total)
 
         pdf_rutas = [
             ruta_pdf_cuestionario_A,
@@ -336,11 +366,11 @@ def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificaci
         ws_b = wb.active
         ws_b.title = "Cuestionario B"
         datos_b = procesar_cuestionario_B()
-        escribir_datos_cuestionario(ws_b, datos_b, "B")
+        escribir_datos_cuestionario(ws_b, datos_b, "B", ws_total)
 
         ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
         datos_extralaboral = procesar_cuestionario_Extralaboral()
-        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral")
+        escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral", ws_total)
 
         pdf_rutas = [
             ruta_pdf_cuestionario_B,
@@ -351,10 +381,7 @@ def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificaci
     (puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral,
      puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral) = calcular_puntaje_total()
 
-    ws_total = wb.create_sheet("Total General")
-    escribir_encabezado(ws_total, ["Cuestionarios evaluados", "Bruto", "Transformado", "Clasificación"], "00A9DF")
-
-    if tipo_empleado == 'jefes':
+    if tipo_empleado.lower() == 'a' or 'A':
         ws_total.append(["A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral])
         color = obtener_color_clasificacion(clasificacion_A_Extralaboral)
         ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
@@ -397,7 +424,7 @@ def aplicar_estilo_fila(ws, color_hex, bold=False):
         if bold:
             cell.font = Font(bold=True)
 
-def escribir_datos_cuestionario(ws, datos, cuestionario):
+def escribir_datos_cuestionario(ws, datos, cuestionario,ws_total):
     encabezado_fill = PatternFill(start_color="00A9DF", end_color="00A9DF", fill_type="solid")
     dominio_fill = PatternFill(start_color="99FF99", end_color="99FF99", fill_type="solid")
     dimension_fill = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")
@@ -461,18 +488,34 @@ def escribir_datos_cuestionario(ws, datos, cuestionario):
 if __name__ == "__main__":
     crear_base_datos()
     
-    tipo_empleado = input("Ingrese el tipo de empleado (Jefes / Operarios): ").lower()
+    tipo_empleado = input("Ingrese el tipo de empleado (A / B): ").lower()
     nombre_empleado = input("Ingrese el nombre del empleado: ")
-    identificacion = input("Ingrese la identificación del empleado: ")
+    identificacion = input("Ingrese la CC del empleado: ")
+
+    # Lista de áreas
+    areas = ["RRHH", "Operaciones", "Mantenimiento", "Financiera", "SGI", "Gerencia"]
     
-    datos_a = procesar_cuestionario_A()
-    datos_b = procesar_cuestionario_B()
+    # Mostrar opciones de áreas
+    print("Seleccione el área del empleado:")
+    for i, area in enumerate(areas, 1):
+        print(f"{i}. {area}")
+    
+    # Validar la selección del área
+    while True:
+        try:
+            area_seleccionada = int(input("Ingrese el número correspondiente al área: "))
+            if 1 <= area_seleccionada <= len(areas):
+                area = areas[area_seleccionada - 1]
+                break
+            else:
+                print("Número inválido. Intente de nuevo.")
+        except ValueError:
+            print("Entrada inválida. Por favor, ingrese un número.")
+
+    datos_a = procesar_cuestionario_A() if tipo_empleado == 'a' or 'A' else None
+    datos_b = procesar_cuestionario_B() if tipo_empleado == 'b' or 'B' else None
     datos_extralaboral = procesar_cuestionario_Extralaboral()
     datos_estres = procesar_cuestionario_estres(tipo_empleado)
 
-    if datos_estres[0] is None:
-        print("Error: No se pudo procesar el cuestionario de estrés.")
-    else:
-        generar_excel(datos_estres[0], datos_estres[1], datos_estres[2], identificacion, tipo_empleado)
-        guardar_en_db(tipo_empleado, nombre_empleado, identificacion, datos_a, datos_b, datos_extralaboral, datos_estres)
-        print("Resultados guardados en la base de datos.")
+    generar_excel(datos_estres[0], datos_estres[1], datos_estres[2], identificacion, tipo_empleado, area)
+    guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a, datos_b, datos_extralaboral, datos_estres)
