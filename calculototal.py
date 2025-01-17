@@ -36,7 +36,6 @@ CLASIFICACION_CUESTIONARIOS = {
 }
 
 
-
 def crear_base_datos():
     """Crea las tablas necesarias en la base de datos SQLite."""
     conn = sqlite3.connect('evaluacion_psicosocial.db')

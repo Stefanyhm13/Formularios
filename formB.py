@@ -18,7 +18,6 @@ if not os.path.exists(directorio_plantillas):
     
 
 # Generar plantillas desde el PDF de referencia
-print("Generando plantillas desde el PDF de referencia...")
 paginas_referencia = convert_from_path(ruta_pdf_referencia, poppler_path=poppler_path)
 
 plantillas = []
@@ -32,7 +31,6 @@ for i, pagina in enumerate(paginas_referencia):
    
     plantillas.append(imagen_cv)
 
-print("Todas las plantillas han sido generadas correctamente.")
 def alinear_con_plantilla(imagen, plantilla):
     # Convertir ambas imágenes a escala de grises
     imagen_gray = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
@@ -68,7 +66,6 @@ def alinear_con_plantilla(imagen, plantilla):
 # Convertir el PDF del cuestionario a procesar a imágenes
 ruta_pdf_cuestionario = ruta_pdf_cuestionario_B
 paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
-print("Cuestionario convertido a imágenes. Procesando alineación...")
 
 imagenes_alineadas = []
 for i, pagina in enumerate(paginas_cuestionario):
@@ -105,8 +102,6 @@ def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
     pixeles_si = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["SI"][0], *coordenadas_filtro["SI"][1])
     pixeles_no = contar_pixeles_negros(imagen_cv, *coordenadas_filtro["NO"][0], *coordenadas_filtro["NO"][1])
 
-    print(f"Filtro - Página {pagina_idx + 1}: SI: {pixeles_si} píxeles, NO: {pixeles_no} píxeles")
-
     # Determinar la respuesta según el conteo de píxeles
     respuesta_filtro = "SI" if pixeles_si > pixeles_no else "NO"
 
@@ -118,8 +113,7 @@ def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
         color = (0, 0, 255)  # Rojo para "NO"
         x1, y1, x2, y2 = coordenadas_filtro["NO"][0][0], coordenadas_filtro["NO"][0][1], coordenadas_filtro["NO"][1][0], coordenadas_filtro["NO"][1][1]
 
-        # Si la respuesta es "NO", imprimir un mensaje específico y no procesar más preguntas
-        print(f"Página {pagina_idx + 1} - Respuesta filtro: NO")
+        
         return False
 
     # Dibuja el rectángulo alrededor de la respuesta seleccionada
@@ -128,7 +122,6 @@ def verificar_si(imagen_cv, coordenadas_filtro, pagina_idx):
 
     # Retorna True si la respuesta es "SI", False si es "NO"
     return True
-
 
 # Coordenadas para las preguntas y respuestas desde la 1 hasta la 10
 coordenadas_pagina_1 = {
@@ -291,15 +284,14 @@ for pagina_idx, imagen in enumerate(paginas):
     if pagina_idx == 8:  # Página 9
         es_si = verificar_si(imagen_cv, coordenadas_filtro_pagina_9, pagina_idx)
         if not es_si:
-            print(f"Página {pagina_idx + 1} omitida: Respuesta filtro 'NO'")
+            
             continue  # Saltar esta página si el filtro es "NO"
-        print(f"Página {pagina_idx + 1} procesada: Respuesta filtro 'SI'")
+        
    
     # Obtener las coordenadas para la página actual
     if pagina_idx < len(coordenadas_paginas):
         coordenadas_actual = coordenadas_paginas[pagina_idx]
-    else:
-        print(f"Página {pagina_idx + 1}: No hay coordenadas definidas.")
+    else:       
         continue
 # Procesar cada página del PDF
 for pagina_idx, imagen in enumerate(paginas):
@@ -310,15 +302,14 @@ for pagina_idx, imagen in enumerate(paginas):
     if pagina_idx == 8:  # Página 9
         es_si = verificar_si(imagen_cv, coordenadas_filtro_pagina_9, pagina_idx)
         if not es_si:
-            print(f"Página {pagina_idx + 1} omitida: Respuesta filtro 'NO'")
+            
             continue  # Saltar esta página si el filtro es "NO"
-        print(f"Página {pagina_idx + 1} procesada: Respuesta filtro 'SI'")
+        
 
     # Obtener las coordenadas para la página actual
     if pagina_idx < len(coordenadas_paginas):
         coordenadas_actual = coordenadas_paginas[pagina_idx]
     else:
-        print(f"Página {pagina_idx + 1}: No hay coordenadas definidas.")
         continue
 
     # Procesar cada pregunta y determinar la respuesta
@@ -361,8 +352,6 @@ for pagina_idx, imagen in enumerate(paginas):
             cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
             cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-        # **Imprimir el resultado en consola para depuración**
-        print(f"Pregunta {pregunta}: {resultados} - Respuesta detectada: {respuesta}")
 
         # Añadir la respuesta de la pregunta a la lista de respuestas de la página
         respuestas_pagina.append(f"Pregunta {pregunta}: {respuesta}")
@@ -373,9 +362,6 @@ for pagina_idx, imagen in enumerate(paginas):
     # Agregar la imagen procesada a la lista
     imagenes_con_respuestas.append(imagen_cv)
 
-
-# Imprimir todas las respuestas de todas las páginas
-print("\n".join(respuestas_totales))
 
 def obtener_respuestas_procesadas1():
     respuestas_procesadas1 = {}

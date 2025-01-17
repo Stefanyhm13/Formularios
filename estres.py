@@ -20,8 +20,6 @@ if not os.path.exists(directorio_plantillas):
 if not os.path.exists(ruta_pdf_referencia):
     raise FileNotFoundError(f"El archivo de referencia {ruta_pdf_referencia} no existe.")
 
-# Generar plantilla desde el PDF de referencia
-print("Generando plantilla desde el PDF de referencia...")
 try:
     paginas_referencia = convert_from_path(ruta_pdf_referencia, poppler_path=poppler_path)
 except Exception as e:
@@ -34,7 +32,6 @@ plantilla = cv2.cvtColor(np.array(paginas_referencia[0]), cv2.COLOR_RGB2BGR)
 # Guardar la plantilla
 ruta_plantilla = os.path.join(directorio_plantillas, 'plantilla.png')
 cv2.imwrite(ruta_plantilla, plantilla)
-print("La plantilla ha sido generada correctamente.")
 
 def alinear_con_plantilla(imagen, plantilla):
     # Convertir ambas imágenes a escala de grises
@@ -70,12 +67,10 @@ def alinear_con_plantilla(imagen, plantilla):
 
 # Convertir el PDF del cuestionario a procesar a imágenes
 ruta_pdf_cuestionario = ruta_pdf_cuestionario_estres
-print(f"Ruta del PDF del cuestionario: {ruta_pdf_cuestionario}")
 try:
     paginas_cuestionario = convert_from_path(ruta_pdf_cuestionario, poppler_path=poppler_path)
-    print("Cuestionario convertido a imágenes. Procesando alineación...")
+    
 except Exception as e:
-    print(f"Error al convertir el PDF del cuestionario: {e}")
     raise
 
 imagenes_alineadas = []
@@ -215,8 +210,6 @@ for pagina_idx, imagen in enumerate(paginas):
             cv2.rectangle(imagen_cv, (x1, y1), (x2, y2), (0, 255, 0), 3)
             cv2.putText(imagen_cv, respuesta, (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-        # **Imprimir el resultado en consola para depuración**
-        print(f"Pregunta {pregunta}: {resultados} - Respuesta detectada: {respuesta}")
 
         # Añadir la respuesta de la pregunta a la lista de respuestas de la página
         respuestas_pagina.append(f"Pregunta {pregunta}: {respuesta}")
@@ -226,10 +219,6 @@ for pagina_idx, imagen in enumerate(paginas):
 
     # Agregar la imagen procesada a la lista
     imagenes_con_respuestas.append(imagen_cv)
-
-
-# Imprimir todas las respuestas de todas las páginas
-print("\n".join(respuestas_totales))
 
 def obtener_respuestas_procesadas4():
     respuestas_procesadas4 = {}
@@ -283,9 +272,6 @@ while True:
 # Cierra la ventana cuando termina
 cv2.destroyAllWindows()
     
-
-
-
 
 # Definir los grupos de preguntas y sus valores según las opciones de respuesta
 GRUPOS_VALORES = {
@@ -399,6 +385,4 @@ if __name__ == "__main__":
         global puntaje_bruto, puntaje_transformado, clasificacion  # Declaramos las variables como globales
         puntaje_bruto, puntaje_transformado, clasificacion = resultado
 
-        print(f"Puntaje Bruto Total: {puntaje_bruto}")
-        print(f"Puntaje Transformado: {puntaje_transformado}")
-        print(f"Clasificación: {clasificacion}")
+        
