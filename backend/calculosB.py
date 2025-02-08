@@ -1,5 +1,5 @@
 # Importar funciones necesarias desde formB
-from formB import obtener_respuestas_procesadas1
+from backend.formB import obtener_respuestas_procesadas1
 
 # Definir los dominios y dimensiones
 DOMINIOS = {
@@ -300,9 +300,9 @@ def calcular_transformados_y_clasificar(puntajes, puntaje_total, dimensiones_val
     return puntajes_transformados, clasificaciones, transformado_total, clasificacion_total
 
 # Función principal para procesar el cuestionario
-def procesar_cuestionario_B():
+def procesar_cuestionario_B(respuestas_procesadas):
     # Obtener respuestas procesadas desde formB
-    respuestas_procesadas1 = obtener_respuestas_procesadas1()
+    respuestas_procesadas1 = obtener_respuestas_procesadas1(respuestas_procesadas)
 
     # Imprimir las respuestas procesadas y sus valores
     print("\n**Respuestas Procesadas y sus Valores:**")
@@ -349,9 +349,9 @@ def procesar_cuestionario_B():
     print(f"Puntaje Total del Cuestionario: Bruto: {puntaje_total}, Transformado: {transformado_total}, Clasificación: {clasificacion_total}")
 
     # Retornar todos los resultados
-    return puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total
+    return list((puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total))
 
-# Asignar transformado_total como variable exportable
+'''# Asignar transformado_total como variable exportable
 transformado_total = procesar_cuestionario_B()[4]  # Índice 4 corresponde al transformado_total
 
 
@@ -363,3 +363,4 @@ if __name__ == "__main__":
 else:
     (puntajes, puntaje_total, puntajes_transformados, clasificaciones, 
      transformado_total, clasificacion_total) = procesar_cuestionario_B()    
+'''

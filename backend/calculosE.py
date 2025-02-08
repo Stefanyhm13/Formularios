@@ -1,5 +1,5 @@
 # Importar funciones necesarias desde Extra
-from Extra import obtener_respuestas_procesadas3
+from backend.Extra import obtener_respuestas_procesadas3
 
 # Definir las dimensiones del cuestionario extralaboral
 DIMENSIONES = {
@@ -155,15 +155,15 @@ def calcular_transformados_y_clasificar(puntajes, puntaje_total):
     return puntajes_transformados, clasificaciones, transformado_total, clasificacion_total
 
 # Función principal para procesar el cuestionario
-def procesar_cuestionario_extralaboral():
-    respuestas_procesadas = obtener_respuestas_procesadas3()
+def procesar_cuestionario_extralaboral(respuestas_procesadas):
+    respuestas_procesadas = obtener_respuestas_procesadas3(respuestas_procesadas)
     puntajes, puntaje_total, dimensiones_validas = calcular_puntajes(respuestas_procesadas)
     puntajes_transformados, clasificaciones, transformado_total, clasificacion_total = calcular_transformados_y_clasificar(
         puntajes, puntaje_total
     )
-    return puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total
+    return list((puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total))
 
-# Asignar transformado_total como variable exportable
+'''# Asignar transformado_total como variable exportable
 transformado_total = procesar_cuestionario_extralaboral()[4]  # Índice 4 corresponde al transformado_tot
 
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     (puntajes, puntaje_total, puntajes_transformados, clasificaciones,
      transformado_total, clasificacion_total) = procesar_cuestionario_extralaboral()
 
-    print("\n**Resultados por Dimensión**\n")
+    print("**Resultados por Dimensión**\n")
     for dimension, puntaje_bruto in puntajes.items():
         if puntaje_bruto is not None:
             transformado = puntajes_transformados[dimension]
@@ -181,4 +181,4 @@ if __name__ == "__main__":
         else:
             print(f"  {dimension}: Sin puntaje válido")
 
-    print(f"\nPuntaje Total del Cuestionario: Bruto: {puntaje_total}, Transformado: {transformado_total}, Clasificación: {clasificacion_total}")
+    print(f"Puntaje Total del Cuestionario: Bruto: {puntaje_total}, Transformado: {transformado_total}, Clasificación: {clasificacion_total}")'''

@@ -1,5 +1,5 @@
 # Importar funciones necesarias desde IntraA
-from IntraA import obtener_respuestas_procesadas
+from backend.IntraA import  obtener_respuestas_procesadas
 
 # Definir los dominios y dimensiones
 DOMINIOS = {
@@ -311,8 +311,8 @@ def clasificar_riesgo(puntaje, clasificacion):
     return "Clasificación no encontrada"
 
 # Función principal para procesar el cuestionario y exportar los resultados
-def procesar_cuestionario():
-    respuestas_procesadas = obtener_respuestas_procesadas()
+def procesar_cuestionario(respuestas_procesadas):
+    respuestas_procesadas = obtener_respuestas_procesadas(respuestas_procesadas)
 
     # Mostrar respuestas procesadas y valores
     print("\n**Respuestas Procesadas y sus Valores:**")
@@ -351,15 +351,5 @@ def procesar_cuestionario():
 
     print(f"Puntaje Total del Cuestionario: Bruto: {puntaje_total}, Transformado: {transformado_total}, Clasificación: {clasificacion_total}")
     
-    return puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total
-
-# Asignar transformado_total como variable exportable
-transformado_total = procesar_cuestionario()[4]  # Índice 4 corresponde al transformado_total
-
-
-# Exportar los resultados al ser importado
-if __name__ == "__main__":
-    procesar_cuestionario()
-else:
-    (puntajes, puntaje_total, puntajes_transformados, clasificaciones, 
-     transformado_total, clasificacion_total) = procesar_cuestionario()
+    return list((puntajes, puntaje_total, puntajes_transformados, clasificaciones, transformado_total, clasificacion_total))
+    

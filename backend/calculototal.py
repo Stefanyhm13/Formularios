@@ -4,14 +4,12 @@ import openpyxl
 import shutil
 from pathlib import Path
 from openpyxl.styles import Font, Alignment, PatternFill
-from calculosA import transformado_total as transformado_total_A
-from calculosB import transformado_total as transformado_total_B
-from calculosE import transformado_total as transformado_total_Extralaboral
-from calculosA import procesar_cuestionario as procesar_cuestionario_A
-from calculosB import procesar_cuestionario_B as procesar_cuestionario_B
-from calculosE import procesar_cuestionario_extralaboral as procesar_cuestionario_Extralaboral
-from estres import procesar_cuestionario_estres
-from rutas import ruta_pdf_cuestionario_A, ruta_pdf_cuestionario_B, ruta_pdf_cuestionario_extralaboral, ruta_pdf_cuestionario_estres
+from backend.calculosA import procesar_cuestionario as procesar_cuestionario
+from backend.calculosB import procesar_cuestionario_B as procesar_cuestionario_B
+from backend.calculosE import procesar_cuestionario_extralaboral as procesar_cuestionario_Extralaboral
+from backend.estres import procesar_cuestionario_estres
+from backend.rutas import obtener_cuestionarios
+
 
 FACTORES_TRANSFORMACION = {
     "A + Extralaboral": 616,
@@ -35,18 +33,20 @@ CLASIFICACION_CUESTIONARIOS = {
     ]
 }
 
-
 def crear_base_datos():
-    """Crea las tablas necesarias en la base de datos SQLite."""
-    conn = sqlite3.connect('evaluacion_psicosocial.db')
+    """Crea las tablas necesarias en la base de datos SQLite en la ruta especificada."""
+    # Definir la ruta completa de la base de datos
+    db_path = Path(r"C:\Users\practicante.rrhh\Desktop\cuestio_extralab\data\evaluacion_psicosocial.db")
+
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Tabla para información de los usuarios
+     # Tabla para información de los usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT,
-            identificacion TEXT,
+            identificacion TEXT UNIQUE,
             area TEXT
         )
     ''')
@@ -112,17 +112,21 @@ def crear_base_datos():
     conn.commit()
     conn.close()
 
-def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a, datos_b, datos_extralaboral, datos_estres):
-    """Guarda todos los resultados en la base de datos."""
-    conn = sqlite3.connect('evaluacion_psicosocial.db')
+def guardar_en_db(tipo_empleado, nombre_empleado, cedula, area, datos_a, datos_b, datos_extralaboral, datos_estres):
+    """Guarda todos los resultados en la base de datos existente."""
+    # Ruta fija a la base de datos en la carpeta 'data'
+    db_path = Path(r"C:\Users\practicante.rrhh\Desktop\cuestio_extralab\data\evaluacion_psicosocial.db")
+
+    # Conectar a la base de datos
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     fecha_actual = datetime.now()
 
     # Insertar información del usuario
     cursor.execute('''
-        INSERT INTO usuarios (nombre, identificacion, area)
+        INSERT INTO usuarios (nombre, Identificacion, area)
         VALUES (?, ?, ?)
-    ''', (nombre_empleado, identificacion, area))
+    ''', (nombre_empleado, cedula, area))
     usuario_id = cursor.lastrowid
 
     # Insertar información básica de la evaluación
@@ -180,7 +184,7 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a,
                       clasificaciones[dominio]))
 
     # Guardar resultados según el tipo de empleado
-    if tipo_empleado.lower() == 'a':
+    if tipo_empleado.upper() == 'A':
         # Para jefes, guardar cuestionario A
         if datos_a:
             resultado_id_a = insertar_resultado_cuestionario(
@@ -237,7 +241,7 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a,
         )
 
     # Guardar resultados combinados
-    if tipo_empleado.lower() == 'a':
+    if tipo_empleado.lower() == 'a' or 'A':
         # Para jefes, guardar A + Extralaboral
         puntaje_A_Extralaboral = datos_a[4] + datos_extralaboral[4]
         transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
@@ -283,6 +287,8 @@ def guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a,
     conn.commit()
     conn.close()
 
+    return "Datos guardados exitosamente en la base de datos."
+
 # Las funciones existentes se mantienen igual
 def obtener_color_clasificacion(clasificacion):
     """
@@ -309,22 +315,24 @@ def clasificar_puntaje(puntaje, clasificacion_rangos):
     return "Clasificación no encontrada"
 
 # Función principal para calcular y clasificar puntajes combinados
-def calcular_puntaje_total():
-    # Calcular combinaciones de Forma A + Extralaboral y Forma B + Extralaboral
-    puntaje_A_Extralaboral = round(transformado_total_A + transformado_total_Extralaboral)
-    puntaje_B_Extralaboral = round(transformado_total_B + transformado_total_Extralaboral)
+def calcular_puntaje_total(transformado_total, transformado_total_Extralaboral,tipo_empleado):
+    
+    if tipo_empleado.lower() == 'a' or 'A':
+        puntaje_A_Extralaboral = round(transformado_total+ transformado_total_Extralaboral)
+        transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
+        clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
 
-    # Transformar los puntajes
-    transformado_A_Extralaboral = round((puntaje_A_Extralaboral / FACTORES_TRANSFORMACION["A + Extralaboral"]) * 100, 1)
-    transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
+        return list((puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral))
 
-    # Clasificar los puntajes transformados
-    clasificacion_A_Extralaboral = clasificar_puntaje(transformado_A_Extralaboral, CLASIFICACION_CUESTIONARIOS["A + Extralaboral"])
-    clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
+    elif tipo_empleado.lower() == 'b' or 'B':
+    
+        puntaje_B_Extralaboral = round(transformado_total+ transformado_total_Extralaboral)
+        transformado_B_Extralaboral = round((puntaje_B_Extralaboral / FACTORES_TRANSFORMACION["B + Extralaboral"]) * 100, 1)
+        clasificacion_B_Extralaboral = clasificar_puntaje(transformado_B_Extralaboral, CLASIFICACION_CUESTIONARIOS["B + Extralaboral"])
 
-    return (puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral,
-            puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral)
+        return list((puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral))
 
+    
 # Función para ajustar el ancho de las columnas automáticamente
 def ajustar_columnas(ws):
     for column_cells in ws.columns:
@@ -339,7 +347,7 @@ def ajustar_columnas(ws):
         adjusted_width = max_length + 2
         ws.column_dimensions[column].width = adjusted_width
         
-def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres, identificacion, tipo_empleado, area):
+def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres, identificacion, tipo_empleado,cuestionarios,respuestas_totales,respuestas_a,respuestas_b,respuestas_extralaboral):
     wb = openpyxl.Workbook()
 
     ws_total = wb.create_sheet("Total General")
@@ -348,45 +356,42 @@ def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificaci
     if tipo_empleado.lower() == 'a' or 'A':
         ws_a = wb.active
         ws_a.title = "Cuestionario A"
-        datos_a = procesar_cuestionario_A()
+        datos_a = respuestas_a
         escribir_datos_cuestionario(ws_a, datos_a, "A", ws_total)
 
         ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
-        datos_extralaboral = procesar_cuestionario_Extralaboral()
+        datos_extralaboral = respuestas_extralaboral
         escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral", ws_total)
 
         pdf_rutas = [
-            ruta_pdf_cuestionario_A,
-            ruta_pdf_cuestionario_extralaboral,
-            ruta_pdf_cuestionario_estres
+            cuestionarios[0],
+            cuestionarios[2],
+            cuestionarios[3]
         ]
 
     else:
         ws_b = wb.active
         ws_b.title = "Cuestionario B"
-        datos_b = procesar_cuestionario_B()
+        datos_b = respuestas_b
         escribir_datos_cuestionario(ws_b, datos_b, "B", ws_total)
 
         ws_extralaboral = wb.create_sheet("Cuestionario Extralaboral")
-        datos_extralaboral = procesar_cuestionario_Extralaboral()
+        datos_extralaboral =respuestas_extralaboral
         escribir_datos_cuestionario(ws_extralaboral, datos_extralaboral, "Extralaboral", ws_total)
 
         pdf_rutas = [
-            ruta_pdf_cuestionario_B,
-            ruta_pdf_cuestionario_extralaboral,
-            ruta_pdf_cuestionario_estres
+            cuestionarios[1],
+            cuestionarios[2],
+            cuestionarios[3]
         ]
-    
-    (puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral,
-     puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral) = calcular_puntaje_total()
 
     if tipo_empleado.lower() == 'a' or 'A':
-        ws_total.append(["A + Extralaboral", puntaje_A_Extralaboral, transformado_A_Extralaboral, clasificacion_A_Extralaboral])
-        color = obtener_color_clasificacion(clasificacion_A_Extralaboral)
+        ws_total.append(["A + Extralaboral", respuestas_totales[0], respuestas_totales[1],respuestas_totales[2]])
+        color = obtener_color_clasificacion(respuestas_totales[2])
         ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
     else:
-        ws_total.append(["B + Extralaboral", puntaje_B_Extralaboral, transformado_B_Extralaboral, clasificacion_B_Extralaboral])
-        color = obtener_color_clasificacion(clasificacion_B_Extralaboral)
+        ws_total.append(["B + Extralaboral", respuestas_totales[0], respuestas_totales[1], respuestas_totales[2]])
+        color = obtener_color_clasificacion(respuestas_totales[2])
         ws_total[f"D{ws_total.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
     ws_total.append(["Estrés", puntaje_bruto_estres, puntaje_transformado_estres, clasificacion_estres])
@@ -409,6 +414,9 @@ def generar_excel(puntaje_bruto_estres, puntaje_transformado_estres, clasificaci
         if pdf_path.exists():
             shutil.copy(pdf_path, carpeta_identificacion)
             print(f"Archivo PDF copiado: {pdf_path}")
+
+    mns="Datos guardados exitosamente en el archivo Excel."
+    return mns
 
 def escribir_encabezado(ws, columnas, fill_color="00A9DF"):
     ws.append(columnas)
@@ -483,38 +491,6 @@ def escribir_datos_cuestionario(ws, datos, cuestionario,ws_total):
     ws[f"D{ws.max_row}"].fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
 
     ajustar_columnas(ws)
-
-if __name__ == "__main__":
-    crear_base_datos()
     
-    tipo_empleado = input("Ingrese el tipo de empleado (A / B): ").lower()
-    nombre_empleado = input("Ingrese el nombre del empleado: ")
-    identificacion = input("Ingrese la CC del empleado: ")
+   
 
-    # Lista de áreas
-    areas = ["RRHH", "Operaciones", "Mantenimiento", "Financiera", "SGI", "Gerencia"]
-    
-    # Mostrar opciones de áreas
-    print("Seleccione el área del empleado:")
-    for i, area in enumerate(areas, 1):
-        print(f"{i}. {area}")
-    
-    # Validar la selección del área
-    while True:
-        try:
-            area_seleccionada = int(input("Ingrese el número correspondiente al área: "))
-            if 1 <= area_seleccionada <= len(areas):
-                area = areas[area_seleccionada - 1]
-                break
-            else:
-                print("Número inválido. Intente de nuevo.")
-        except ValueError:
-            print("Entrada inválida. Por favor, ingrese un número.")
-
-    datos_a = procesar_cuestionario_A() if tipo_empleado == 'a' or 'A' else None
-    datos_b = procesar_cuestionario_B() if tipo_empleado == 'b' or 'B' else None
-    datos_extralaboral = procesar_cuestionario_Extralaboral()
-    datos_estres = procesar_cuestionario_estres(tipo_empleado)
-
-    generar_excel(datos_estres[0], datos_estres[1], datos_estres[2], identificacion, tipo_empleado, area)
-    guardar_en_db(tipo_empleado, nombre_empleado, identificacion, area, datos_a, datos_b, datos_extralaboral, datos_estres)
