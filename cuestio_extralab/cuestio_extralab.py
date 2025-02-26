@@ -1,7 +1,7 @@
 import reflex as rx
 from backend.principal import formulario
 import random
-import asyncio  # Para manejar demoras en la lógica del backend
+import asyncio
 
 class FormState(rx.State):
     """Estado para manejar los datos del formulario."""
@@ -13,20 +13,16 @@ class FormState(rx.State):
     @rx.event
     async def handle_submit(self, form_data: dict):
         """Maneja el envío del formulario."""
-        # Mostrar el indicador de carga
         self.show_loading = True
         self.show_alert = False
 
-        # Simular procesamiento en el backend
-        await asyncio.sleep(2)  # Simulación del procesamiento, reemplaza con tu lógica real
+        await asyncio.sleep(2)  
         self.form_data = form_data
         self.resultado_backend = formulario(form_data)
 
-        # Ocultar el indicador de carga y mostrar el cuadro emergente
         self.show_loading = False
         self.show_alert = True
 
-        # Esperar unos segundos antes de ocultar el alert
         await asyncio.sleep(5)
         self.hide_alert()
 
@@ -70,10 +66,21 @@ def index() -> rx.Component:
         *generar_formas_animadas(30),
         rx.box(
             rx.vstack(
-                # Rueda de carga visible mientras se procesa el formulario
+                # Spinner integrado
                 rx.cond(
                     FormState.show_loading,
-                    rx.spinner(size="1", color="green"),  # Asegúrate de usar un tamaño válido como "sm"
+                    rx.spinner(
+                        size="3",
+                        color="green",
+                        style={
+                            "position": "fixed",
+                            "top": "50%",
+                            "left": "50%",
+                            "transform": "translate(-50%, -50%)",
+                            "zIndex": "1000",
+                        }
+                    ),
+                    rx.text("")  # Componente vacío cuando no está cargando
                 ),
                 rx.image(
                     src="/favicon.ico",
@@ -198,15 +205,25 @@ def index() -> rx.Component:
                                 },
                             },
                         ),
+                        # Botón con spinner integrado
                         rx.button(
-                            "Procesar empleado",
+                            rx.cond(
+                                FormState.show_loading,
+                                rx.hstack(
+                                    rx.spinner(size="1", color="white"),
+                                    rx.text("Procesando...", ml="2"),
+                                ),
+                                rx.text("Procesar empleado")
+                            ),
                             type="submit",
+                            is_disabled=FormState.show_loading,
                             style={
-                                "width": "140px",
+                                "width": "auto",
+                                "minWidth": "140px",
                                 "height": "40px",
                                 "borderRadius": "1em",
                                 "fontSize": "0.8rem",
-                                "padding": "0.5rem",
+                                "padding": "0.5rem 1rem",
                                 "marginTop": "0.4rem",
                                 "backgroundImage": "linear-gradient(144deg, #4CAF50, #388E3C 50%, #2E7D32)",
                                 "boxShadow": "rgba(34, 139, 34, 0.8) 0 15px 30px -10px",
@@ -242,6 +259,7 @@ def index() -> rx.Component:
                             "transition": "opacity 1s ease-in-out",
                         },
                     ),
+                    rx.text("")  # Componente vacío cuando no se muestra el alert
                 ),
             ),
             style={
