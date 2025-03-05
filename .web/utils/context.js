@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useReducer, useState } from "react"
 import { applyDelta, Event, hydrateClientStorage, useEventLoop, refs } from "$/utils/state.js"
 
-export const initialState = {"reflex___state____state": {"is_hydrated": false, "router": {"session": {"client_token": "", "client_ip": "", "session_id": ""}, "headers": {"host": "", "origin": "", "upgrade": "", "connection": "", "cookie": "", "pragma": "", "cache_control": "", "user_agent": "", "sec_websocket_version": "", "sec_websocket_key": "", "sec_websocket_extensions": "", "accept_encoding": "", "accept_language": ""}, "page": {"host": "", "path": "", "raw_path": "", "full_path": "", "full_raw_path": "", "params": {}}}}, "reflex___state____state.cuestio_extralab___cuestio_extralab____form_state": {"form_data": {}, "resultado_backend": [], "show_alert": false, "show_loading": false}, "reflex___state____state.reflex___state____frontend_event_exception_state": {}, "reflex___state____state.reflex___state____on_load_internal_state": {}, "reflex___state____state.reflex___state____update_vars_internal_state": {}}
+export const initialState = {"reflex___state____state": {"is_hydrated": false, "router": {"session": {"client_token": "", "client_ip": "", "session_id": ""}, "headers": {"host": "", "origin": "", "upgrade": "", "connection": "", "cookie": "", "pragma": "", "cache_control": "", "user_agent": "", "sec_websocket_version": "", "sec_websocket_key": "", "sec_websocket_extensions": "", "accept_encoding": "", "accept_language": ""}, "page": {"host": "", "path": "", "raw_path": "", "full_path": "", "full_raw_path": "", "params": {}}}}, "reflex___state____state.reflex___state____update_vars_internal_state": {}, "reflex___state____state.reflex___state____on_load_internal_state": {}, "reflex___state____state.reflex___state____frontend_event_exception_state": {}, "reflex___state____state.cuestio_extralab___cuestio_extralab____form_state": {"form_data": {}, "resultado_backend": [], "show_alert": false, "show_loading": false}}
 
 export const defaultColorMode = "system"
 export const ColorModeContext = createContext(null);
@@ -9,10 +9,10 @@ export const UploadFilesContext = createContext(null);
 export const DispatchContext = createContext(null);
 export const StateContexts = {
   reflex___state____state: createContext(null),
-  reflex___state____state__cuestio_extralab___cuestio_extralab____form_state: createContext(null),
-  reflex___state____state__reflex___state____frontend_event_exception_state: createContext(null),
-  reflex___state____state__reflex___state____on_load_internal_state: createContext(null),
   reflex___state____state__reflex___state____update_vars_internal_state: createContext(null),
+  reflex___state____state__reflex___state____on_load_internal_state: createContext(null),
+  reflex___state____state__reflex___state____frontend_event_exception_state: createContext(null),
+  reflex___state____state__cuestio_extralab___cuestio_extralab____form_state: createContext(null),
 }
 export const EventLoopContext = createContext(null);
 export const clientStorage = {"cookies": {}, "local_storage": {}, "session_storage": {}}
@@ -52,7 +52,7 @@ export const initialEvents = () => [
 
 export const isDevMode = true
 
-export const lastCompiledTimeStamp = "2025-02-17 17:36:10.884236"
+export const lastCompiledTimeStamp = "2025-03-05 08:40:58.116705"
 
 export function UploadFilesProvider({ children }) {
   const [filesById, setFilesById] = useState({})
@@ -84,33 +84,33 @@ export function EventLoopProvider({ children }) {
 
 export function StateProvider({ children }) {
   const [reflex___state____state, dispatch_reflex___state____state] = useReducer(applyDelta, initialState["reflex___state____state"])
-  const [reflex___state____state__cuestio_extralab___cuestio_extralab____form_state, dispatch_reflex___state____state__cuestio_extralab___cuestio_extralab____form_state] = useReducer(applyDelta, initialState["reflex___state____state.cuestio_extralab___cuestio_extralab____form_state"])
-  const [reflex___state____state__reflex___state____frontend_event_exception_state, dispatch_reflex___state____state__reflex___state____frontend_event_exception_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____frontend_event_exception_state"])
-  const [reflex___state____state__reflex___state____on_load_internal_state, dispatch_reflex___state____state__reflex___state____on_load_internal_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____on_load_internal_state"])
   const [reflex___state____state__reflex___state____update_vars_internal_state, dispatch_reflex___state____state__reflex___state____update_vars_internal_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____update_vars_internal_state"])
+  const [reflex___state____state__reflex___state____on_load_internal_state, dispatch_reflex___state____state__reflex___state____on_load_internal_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____on_load_internal_state"])
+  const [reflex___state____state__reflex___state____frontend_event_exception_state, dispatch_reflex___state____state__reflex___state____frontend_event_exception_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____frontend_event_exception_state"])
+  const [reflex___state____state__cuestio_extralab___cuestio_extralab____form_state, dispatch_reflex___state____state__cuestio_extralab___cuestio_extralab____form_state] = useReducer(applyDelta, initialState["reflex___state____state.cuestio_extralab___cuestio_extralab____form_state"])
   const dispatchers = useMemo(() => {
     return {
       "reflex___state____state": dispatch_reflex___state____state,
-      "reflex___state____state.cuestio_extralab___cuestio_extralab____form_state": dispatch_reflex___state____state__cuestio_extralab___cuestio_extralab____form_state,
-      "reflex___state____state.reflex___state____frontend_event_exception_state": dispatch_reflex___state____state__reflex___state____frontend_event_exception_state,
-      "reflex___state____state.reflex___state____on_load_internal_state": dispatch_reflex___state____state__reflex___state____on_load_internal_state,
       "reflex___state____state.reflex___state____update_vars_internal_state": dispatch_reflex___state____state__reflex___state____update_vars_internal_state,
+      "reflex___state____state.reflex___state____on_load_internal_state": dispatch_reflex___state____state__reflex___state____on_load_internal_state,
+      "reflex___state____state.reflex___state____frontend_event_exception_state": dispatch_reflex___state____state__reflex___state____frontend_event_exception_state,
+      "reflex___state____state.cuestio_extralab___cuestio_extralab____form_state": dispatch_reflex___state____state__cuestio_extralab___cuestio_extralab____form_state,
     }
   }, [])
 
   return (
     <StateContexts.reflex___state____state.Provider value={ reflex___state____state }>
-    <StateContexts.reflex___state____state__cuestio_extralab___cuestio_extralab____form_state.Provider value={ reflex___state____state__cuestio_extralab___cuestio_extralab____form_state }>
-    <StateContexts.reflex___state____state__reflex___state____frontend_event_exception_state.Provider value={ reflex___state____state__reflex___state____frontend_event_exception_state }>
-    <StateContexts.reflex___state____state__reflex___state____on_load_internal_state.Provider value={ reflex___state____state__reflex___state____on_load_internal_state }>
     <StateContexts.reflex___state____state__reflex___state____update_vars_internal_state.Provider value={ reflex___state____state__reflex___state____update_vars_internal_state }>
+    <StateContexts.reflex___state____state__reflex___state____on_load_internal_state.Provider value={ reflex___state____state__reflex___state____on_load_internal_state }>
+    <StateContexts.reflex___state____state__reflex___state____frontend_event_exception_state.Provider value={ reflex___state____state__reflex___state____frontend_event_exception_state }>
+    <StateContexts.reflex___state____state__cuestio_extralab___cuestio_extralab____form_state.Provider value={ reflex___state____state__cuestio_extralab___cuestio_extralab____form_state }>
       <DispatchContext.Provider value={dispatchers}>
         {children}
       </DispatchContext.Provider>
-    </StateContexts.reflex___state____state__reflex___state____update_vars_internal_state.Provider>
-    </StateContexts.reflex___state____state__reflex___state____on_load_internal_state.Provider>
-    </StateContexts.reflex___state____state__reflex___state____frontend_event_exception_state.Provider>
     </StateContexts.reflex___state____state__cuestio_extralab___cuestio_extralab____form_state.Provider>
+    </StateContexts.reflex___state____state__reflex___state____frontend_event_exception_state.Provider>
+    </StateContexts.reflex___state____state__reflex___state____on_load_internal_state.Provider>
+    </StateContexts.reflex___state____state__reflex___state____update_vars_internal_state.Provider>
     </StateContexts.reflex___state____state.Provider>
   )
 }
